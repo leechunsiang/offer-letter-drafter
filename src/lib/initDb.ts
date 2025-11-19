@@ -17,6 +17,18 @@ export async function initializeDatabase() {
     }
 
     console.log('Database tables verified successfully')
+
+    // Initialize storage bucket for company logos
+    try {
+      const { storageService } = await import('./storage')
+      await storageService.createBucketIfNotExists()
+      console.log('Storage bucket verified successfully')
+    } catch (storageError) {
+      console.warn('Storage bucket initialization warning:', storageError)
+      // Don't fail initialization if storage bucket creation fails
+      // It will be created on first upload attempt
+    }
+
     return true
   } catch (err) {
     console.error('Error checking database:', err)

@@ -9,9 +9,15 @@ import { Save, Upload } from "lucide-react"
 export default function Settings() {
   const { companySettings, updateCompanySettings } = useStore()
   const [formData, setFormData] = useState(companySettings)
+  const [logoPreview, setLogoPreview] = useState<string>('')
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     setFormData(companySettings)
+    // Set initial logo preview from existing logo URL
+    if (companySettings.branding.logoUrl) {
+      setLogoPreview(companySettings.branding.logoUrl)
+    }
   }, [companySettings])
 
   const handleChange = (section: keyof typeof formData, field: string, value: string) => {
@@ -34,40 +40,53 @@ export default function Settings() {
         return;
       }
 
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        const base64String = reader.result as string
-        console.log("Logo converted to base64, length:", base64String.length);
-        setFormData((prev) => ({
-          ...prev,
-          branding: {
-            ...prev.branding,
-            logoUrl: base64String,
-          },
-        }))
+      // Validate file type
+      const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp']
+      if (!validTypes.includes(file.type)) {
+        alert("Invalid file type. Please upload a PNG, JPG, GIF, or WebP image.");
+        return;
       }
-      reader.readAsDataURL(file)
+
+      // Create preview URL for immediate display
+      const previewUrl = URL.createObjectURL(file)
+      setLogoPreview(previewUrl)
+
+      // Store the file object in form data
+      setFormData((prev) => ({
+        ...prev,
+        branding: {
+          ...prev.branding,
+          logoFile: file,
+        },
+      }))
     }
   }
 
-
-
   const handleSave = async () => {
+    setIsSaving(true)
     try {
       await updateCompanySettings(formData)
       alert('Settings saved successfully!')
+      
+      // Clean up preview URL if it was a blob URL
+      if (logoPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(logoPreview)
+      }
     } catch (error) {
       console.error('Failed to save settings:', error)
-      alert('Failed to save settings. Please try again.')
+      alert(`Failed to save settings: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsSaving(false)
     }
   }
+
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-10">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
-        <Button onClick={handleSave}>
-          <Save className="mr-2 h-4 w-4" /> Save Changes
+        <Button onClick={handleSave} disabled={isSaving}>
+          <Save className="mr-2 h-4 w-4" /> {isSaving ? 'Saving...' : 'Save Changes'}
         </Button>
       </div>
 
@@ -133,9 +152,9 @@ export default function Settings() {
               <Label>Company Logo</Label>
               <div className="flex items-center gap-4">
                 <div className="h-20 w-20 rounded-lg border border-dashed flex items-center justify-center overflow-hidden bg-muted">
-                  {formData.branding.logoUrl ? (
+                  {logoPreview ? (
                     <img
-                      src={formData.branding.logoUrl}
+                      src={logoPreview}
                       alt="Company Logo"
                       className="h-full w-full object-contain"
                     />
