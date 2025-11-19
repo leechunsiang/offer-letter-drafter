@@ -26,7 +26,6 @@ export interface CompanySettings {
   }
   branding: {
     logoUrl: string
-    logoFile?: File // Optional file object for new uploads
     primaryColor: string
   }
   emailConfig: {
@@ -34,7 +33,6 @@ export interface CompanySettings {
     senderEmail: string
   }
 }
-
 
 interface Store {
   candidates: Candidate[]
@@ -220,35 +218,11 @@ export const useStore = create<Store>((set, get) => ({
   updateCompanySettings: async (settings) => {
     try {
       const currentSettings = get().companySettings
-      let logoUrl = currentSettings.branding.logoUrl
-
-      // If a new logo file is provided, upload it to storage
-      if (settings.branding?.logoFile) {
-        const { storageService } = await import('@/lib/storage')
-        
-        // Delete old logo if it exists and is a storage URL
-        await storageService.deleteOldLogoIfExists(currentSettings.branding.logoUrl)
-        
-        // Upload new logo
-        logoUrl = await storageService.uploadLogo(settings.branding.logoFile)
-      } else if (settings.branding?.logoUrl !== undefined) {
-        // If logoUrl is explicitly provided (not a file), use it
-        logoUrl = settings.branding.logoUrl
-      }
-
       const mergedSettings = {
         info: { ...currentSettings.info, ...settings.info },
-        branding: { 
-          ...currentSettings.branding, 
-          ...settings.branding,
-          logoUrl, // Use the uploaded URL or existing URL
-        },
+        branding: { ...currentSettings.branding, ...settings.branding },
         emailConfig: { ...currentSettings.emailConfig, ...settings.emailConfig },
       }
-
-      // Remove logoFile before saving to database
-      delete mergedSettings.branding.logoFile
-
       const updated = await companySettingsService.upsert(mergedSettings)
       set({ companySettings: updated, error: null })
     } catch (error) {
@@ -257,5 +231,4 @@ export const useStore = create<Store>((set, get) => ({
       throw error
     }
   },
-
 }))
