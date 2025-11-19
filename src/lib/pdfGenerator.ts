@@ -85,30 +85,103 @@ export const generateOfferPDF = async (
     console.log("PDF Generator: No logo URL found in company settings");
   }
   
-  // Split content into lines and add to PDF
-  const lines = content.split('\n');
-  const lineHeight = 7; // mm
   
-  for (const line of lines) {
+  // Split content into lines and add to PDF with formatting
+  const { parseHTMLContent, parseColor } = await import('./htmlParser')
+  const parsedLines = parseHTMLContent(content)
+  const lineHeight = 7 // mm
+  
+  for (const line of parsedLines) {
     // Check if we need a new page
     if (yPosition + lineHeight > pageHeight - margin) {
-      pdf.addPage();
-      yPosition = margin;
+      pdf.addPage()
+      yPosition = margin
     }
-    
-    // Split long lines to fit within page width
-    const wrappedLines = pdf.splitTextToSize(line || ' ', maxWidth);
-    
-    for (const wrappedLine of wrappedLines) {
-      // Check again after wrapping
-      if (yPosition + lineHeight > pageHeight - margin) {
-        pdf.addPage();
-        yPosition = margin;
+
+    // Handle alignment
+    const align = line.align || 'left'
+    let xPosition = margin
+
+    // Calculate line width for alignment
+    if (align === 'center' || align === 'right') {
+      let lineWidth = 0
+      for (const segment of line.segments) {
+        pdf.setFont('helvetica', segment.bold ? 'bold' : segment.italic ? 'italic' : 'normal')
+        pdf.setFontSize(segment.fontSize || 12)
+        lineWidth += pdf.getTextWidth(segment.text)
       }
-      
-      pdf.text(wrappedLine, margin, yPosition);
-      yPosition += lineHeight;
+
+      if (align === 'center') {
+        xPosition = (pageWidth - lineWidth) / 2
+      } else if (align === 'right') {
+        xPosition = pageWidth - margin - lineWidth
+      }
     }
+
+    // Render each segment with its formatting
+    for (const segment of line.segments) {
+      // Set font style
+      let fontStyle = 'normal'
+      if (segment.bold && segment.italic) {
+        fontStyle = 'bolditalic'
+      } else if (segment.bold) {
+        fontStyle = 'bold'
+      } else if (segment.italic) {
+        fontStyle = 'italic'
+      }
+      pdf.setFont('helvetica', fontStyle)
+
+      // Set font size
+      pdf.setFontSize(segment.fontSize || 12)
+
+      // Set text color
+      if (segment.color) {
+        const rgb = parseColor(segment.color)
+        pdf.setTextColor(rgb.r, rgb.g, rgb.b)
+      } else {
+        pdf.setTextColor(0, 0, 0) // Reset to black
+      }
+
+      // Handle text wrapping for long segments
+      const segmentText = segment.text
+      const wrappedLines = pdf.splitTextToSize(segmentText, maxWidth - (xPosition - margin))
+
+      for (let i = 0; i < wrappedLines.length; i++) {
+        const wrappedLine = wrappedLines[i]
+
+        // Check if we need a new page after wrapping
+        if (yPosition + lineHeight > pageHeight - margin) {
+          pdf.addPage()
+          yPosition = margin
+          xPosition = margin // Reset x position on new page
+        }
+
+        // Add text
+        pdf.text(wrappedLine, xPosition, yPosition)
+
+        // Add underline if needed
+        if (segment.underline) {
+          const textWidth = pdf.getTextWidth(wrappedLine)
+          pdf.setLineWidth(0.1)
+          pdf.line(xPosition, yPosition + 0.5, xPosition + textWidth, yPosition + 0.5)
+        }
+
+        // Move x position for next segment (only on same line)
+        if (i === wrappedLines.length - 1) {
+          xPosition += pdf.getTextWidth(wrappedLine)
+        } else {
+          // If wrapped to next line, move y position and reset x
+          yPosition += lineHeight
+          xPosition = margin
+        }
+      }
+    }
+
+    // Move to next line
+    yPosition += lineHeight
+    
+    // Reset text color for next line
+    pdf.setTextColor(0, 0, 0)
   }
 
   // 3. Save PDF

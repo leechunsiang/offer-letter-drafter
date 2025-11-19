@@ -3,7 +3,7 @@ import { useStore } from "@/store/useStore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import RichTextEditor from "@/components/RichTextEditor"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Save } from "lucide-react"
 
@@ -106,13 +106,11 @@ export default function Templates() {
             </div>
             <div className="space-y-2 flex-1 flex flex-col">
               <Label htmlFor="content">Content</Label>
-              <Textarea
-                id="content"
-                className="flex-1 font-mono text-sm resize-none"
+              <RichTextEditor
                 value={editForm.content}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, content: e.target.value })
-                }
+                onChange={(value) => setEditForm({ ...editForm, content: value })}
+                placeholder="Enter your template content here. Use the toolbar to format text."
+                className="flex-1"
               />
               <p className="text-xs text-muted-foreground">
                 Available variables: {"{{name}}"}, {"{{role}}"}, {"{{offerDate}}"}, {"{{companyName}}"}, {"{{companyAddress}}"}, {"{{companyWebsite}}"}, {"{{companyPhone}}"}, {"{{senderName}}"}, {"{{senderEmail}}"}

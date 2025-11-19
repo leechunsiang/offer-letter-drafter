@@ -53,9 +53,10 @@ export function PreviewDialog({
               />
             </div>
           )}
-          <div className="prose max-w-none whitespace-pre-wrap font-serif">
-            {content}
-          </div>
+          <div 
+            className="prose max-w-none font-serif"
+            dangerouslySetInnerHTML={{ __html: content }}
+          />
         </div>
         <div className="flex justify-end gap-2 pt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
