@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { candidatesService, templatesService, companySettingsService } from '@/lib/database'
 
 export interface Candidate {
   id: string
@@ -36,90 +37,182 @@ interface Store {
   candidates: Candidate[]
   templates: Template[]
   companySettings: CompanySettings
-  addCandidate: (candidate: Omit<Candidate, 'id' | 'status'>) => void
-  updateCandidateStatus: (id: string, status: 'Pending' | 'Generated') => void
-  addTemplate: (template: Omit<Template, 'id'>) => void
-  updateTemplate: (id: string, content: string) => void
-  updateCompanySettings: (settings: Partial<CompanySettings>) => void
+  isLoading: boolean
+  error: string | null
+  initialized: boolean
+
+  initialize: () => Promise<void>
+  loadCandidates: () => Promise<void>
+  loadTemplates: () => Promise<void>
+  loadCompanySettings: () => Promise<void>
+  addCandidate: (candidate: Omit<Candidate, 'id' | 'status'>) => Promise<void>
+  updateCandidateStatus: (id: string, status: 'Pending' | 'Generated') => Promise<void>
+  addTemplate: (template: Omit<Template, 'id'>) => Promise<void>
+  updateTemplate: (id: string, content: string) => Promise<void>
+  updateCompanySettings: (settings: Partial<CompanySettings>) => Promise<void>
 }
 
-export const useStore = create<Store>((set) => ({
-  candidates: [
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john@example.com',
-      role: 'Software Engineer',
-      status: 'Pending',
-      offerDate: '2023-10-26',
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      role: 'Product Manager',
-      status: 'Generated',
-      offerDate: '2023-10-25',
-    },
-  ],
-  templates: [
-    {
-      id: '1',
-      name: 'Standard Offer',
-      content: `Dear {{name}},
-
-We are pleased to offer you the position of {{role}} at our company.
-
-Start Date: {{offerDate}}
-
-Sincerely,
-HR Team`,
-    },
-  ],
-  companySettings: {
-    info: {
-      name: '',
-      address: '',
-      website: '',
-      phone: '',
-    },
-    branding: {
-      logoUrl: '',
-      primaryColor: '#000000',
-    },
-    emailConfig: {
-      senderName: '',
-      senderEmail: '',
-    },
+const defaultCompanySettings: CompanySettings = {
+  info: {
+    name: '',
+    address: '',
+    website: '',
+    phone: '',
   },
-  addCandidate: (candidate) =>
-    set((state) => ({
-      candidates: [
-        ...state.candidates,
-        { ...candidate, id: Math.random().toString(36).substr(2, 9), status: 'Pending' },
-      ],
-    })),
-  updateCandidateStatus: (id, status) =>
-    set((state) => ({
-      candidates: state.candidates.map((c) =>
-        c.id === id ? { ...c, status } : c
-      ),
-    })),
-  addTemplate: (template) =>
-    set((state) => ({
-      templates: [
-        ...state.templates,
-        { ...template, id: Math.random().toString(36).substr(2, 9) },
-      ],
-    })),
-  updateTemplate: (id, content) =>
-    set((state) => ({
-      templates: state.templates.map((t) =>
-        t.id === id ? { ...t, content } : t
-      ),
-    })),
-  updateCompanySettings: (settings) =>
-    set((state) => ({
-      companySettings: { ...state.companySettings, ...settings },
-    })),
+  branding: {
+    logoUrl: '',
+    primaryColor: '#000000',
+  },
+  emailConfig: {
+    senderName: '',
+    senderEmail: '',
+  },
+}
+
+export const useStore = create<Store>((set, get) => ({
+  candidates: [],
+  templates: [],
+  companySettings: defaultCompanySettings,
+  isLoading: false,
+  error: null,
+  initialized: false,
+
+  initialize: async () => {
+    if (get().initialized) return
+
+    set({ isLoading: true, error: null })
+    try {
+      await Promise.all([
+        get().loadCandidates(),
+        get().loadTemplates(),
+        get().loadCompanySettings(),
+      ])
+
+      candidatesService.subscribe(() => {
+        get().loadCandidates()
+      })
+
+      templatesService.subscribe(() => {
+        get().loadTemplates()
+      })
+
+      companySettingsService.subscribe(() => {
+        get().loadCompanySettings()
+      })
+
+      set({ initialized: true, isLoading: false })
+    } catch (error) {
+      console.error('Error initializing store:', error)
+      set({ error: error instanceof Error ? error.message : 'Failed to initialize', isLoading: false })
+    }
+  },
+
+  loadCandidates: async () => {
+    try {
+      const candidates = await candidatesService.getAll()
+      set({ candidates, error: null })
+    } catch (error) {
+      console.error('Error loading candidates:', error)
+      set({ error: error instanceof Error ? error.message : 'Failed to load candidates' })
+    }
+  },
+
+  loadTemplates: async () => {
+    try {
+      const templates = await templatesService.getAll()
+      set({ templates, error: null })
+    } catch (error) {
+      console.error('Error loading templates:', error)
+      set({ error: error instanceof Error ? error.message : 'Failed to load templates' })
+    }
+  },
+
+  loadCompanySettings: async () => {
+    try {
+      const settings = await companySettingsService.get()
+      if (settings) {
+        set({ companySettings: settings, error: null })
+      }
+    } catch (error) {
+      console.error('Error loading company settings:', error)
+      set({ error: error instanceof Error ? error.message : 'Failed to load settings' })
+    }
+  },
+
+  addCandidate: async (candidate) => {
+    try {
+      const newCandidate = await candidatesService.create(candidate)
+      set((state) => ({
+        candidates: [newCandidate, ...state.candidates],
+        error: null,
+      }))
+    } catch (error) {
+      console.error('Error adding candidate:', error)
+      set({ error: error instanceof Error ? error.message : 'Failed to add candidate' })
+      throw error
+    }
+  },
+
+  updateCandidateStatus: async (id, status) => {
+    try {
+      const updatedCandidate = await candidatesService.updateStatus(id, status)
+      set((state) => ({
+        candidates: state.candidates.map((c) =>
+          c.id === id ? updatedCandidate : c
+        ),
+        error: null,
+      }))
+    } catch (error) {
+      console.error('Error updating candidate status:', error)
+      set({ error: error instanceof Error ? error.message : 'Failed to update candidate' })
+      throw error
+    }
+  },
+
+  addTemplate: async (template) => {
+    try {
+      const newTemplate = await templatesService.create(template)
+      set((state) => ({
+        templates: [newTemplate, ...state.templates],
+        error: null,
+      }))
+    } catch (error) {
+      console.error('Error adding template:', error)
+      set({ error: error instanceof Error ? error.message : 'Failed to add template' })
+      throw error
+    }
+  },
+
+  updateTemplate: async (id, content) => {
+    try {
+      const updatedTemplate = await templatesService.update(id, content)
+      set((state) => ({
+        templates: state.templates.map((t) =>
+          t.id === id ? updatedTemplate : t
+        ),
+        error: null,
+      }))
+    } catch (error) {
+      console.error('Error updating template:', error)
+      set({ error: error instanceof Error ? error.message : 'Failed to update template' })
+      throw error
+    }
+  },
+
+  updateCompanySettings: async (settings) => {
+    try {
+      const currentSettings = get().companySettings
+      const mergedSettings = {
+        info: { ...currentSettings.info, ...settings.info },
+        branding: { ...currentSettings.branding, ...settings.branding },
+        emailConfig: { ...currentSettings.emailConfig, ...settings.emailConfig },
+      }
+      const updated = await companySettingsService.upsert(mergedSettings)
+      set({ companySettings: updated, error: null })
+    } catch (error) {
+      console.error('Error updating company settings:', error)
+      set({ error: error instanceof Error ? error.message : 'Failed to update settings' })
+      throw error
+    }
+  },
 }))

@@ -52,9 +52,14 @@ export default function Settings() {
 
 
 
-  const handleSave = () => {
-    updateCompanySettings(formData)
-    // Ideally show a toast notification here
+  const handleSave = async () => {
+    try {
+      await updateCompanySettings(formData)
+      alert('Settings saved successfully!')
+    } catch (error) {
+      console.error('Failed to save settings:', error)
+      alert('Failed to save settings. Please try again.')
+    }
   }
 
   return (

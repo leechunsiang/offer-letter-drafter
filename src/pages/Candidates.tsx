@@ -33,16 +33,20 @@ export default function Candidates() {
     offerDate: new Date().toISOString().split("T")[0],
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    addCandidate(formData)
-    setIsOpen(false)
-    setFormData({
-      name: "",
-      email: "",
-      role: "",
-      offerDate: new Date().toISOString().split("T")[0],
-    })
+    try {
+      await addCandidate(formData)
+      setIsOpen(false)
+      setFormData({
+        name: "",
+        email: "",
+        role: "",
+        offerDate: new Date().toISOString().split("T")[0],
+      })
+    } catch (error) {
+      console.error('Failed to add candidate:', error)
+    }
   }
 
   const handlePreview = (candidate: Candidate) => {
@@ -58,12 +62,16 @@ export default function Candidates() {
   const handleGenerate = async (candidate?: Candidate) => {
     const targetCandidate = candidate || selectedCandidate
     if (!targetCandidate || templates.length === 0) return
-    
+
     console.log("Generating PDF for", targetCandidate.name)
     const template = templates[0]
     await generateOfferPDF(targetCandidate, template, companySettings)
-    updateCandidateStatus(targetCandidate.id, "Generated")
-    setPreviewOpen(false)
+    try {
+      await updateCandidateStatus(targetCandidate.id, "Generated")
+      setPreviewOpen(false)
+    } catch (error) {
+      console.error('Failed to update candidate status:', error)
+    }
   }
 
   return (

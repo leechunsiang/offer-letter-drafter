@@ -1,6 +1,8 @@
 import { Link, Outlet, useLocation } from "react-router-dom"
 import { LayoutDashboard, Users, FileText, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useStore } from "@/store/useStore"
+import { LoadingPage } from "./LoadingSpinner"
 
 const sidebarItems = [
   {
@@ -27,6 +29,28 @@ const sidebarItems = [
 
 export function Layout() {
   const location = useLocation()
+  const { isLoading, initialized, error } = useStore()
+
+  if (!initialized && isLoading) {
+    return <LoadingPage />
+  }
+
+  if (error && !initialized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4 max-w-md">
+          <h2 className="text-xl font-bold text-destructive">Error Loading Application</h2>
+          <p className="text-muted-foreground">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen w-full bg-muted/40">

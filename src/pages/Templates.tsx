@@ -37,14 +37,18 @@ export default function Templates() {
     }
   }, [templates, selectedTemplateId])
 
-  const handleSave = () => {
-    if (selectedTemplateId) {
-      updateTemplate(selectedTemplateId, editForm.content)
-    } else {
-      addTemplate({ name: editForm.name, content: editForm.content })
-      // Ideally we would select the new one, but for simplicity we just reset
-      setEditForm({ name: "New Template", content: "" })
-      setSelectedTemplateId(null)
+  const handleSave = async () => {
+    try {
+      if (selectedTemplateId) {
+        await updateTemplate(selectedTemplateId, editForm.content)
+      } else {
+        await addTemplate({ name: editForm.name, content: editForm.content })
+        setEditForm({ name: "New Template", content: "" })
+        setSelectedTemplateId(null)
+      }
+    } catch (error) {
+      console.error('Failed to save template:', error)
+      alert('Failed to save template. Please try again.')
     }
   }
 
