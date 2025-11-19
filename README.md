@@ -340,3 +340,5 @@ A simplified list can be found in the [Overview](#overview) section.
 - [ts-reset](https://github.com/total-typescript/ts-reset#readme)
 - [Faker](https://fakerjs.dev/)
 - [Dayjs](https://day.js.org/en/)
+#   o f f e r - l e t t e r - d r a f t e r  
+ 
