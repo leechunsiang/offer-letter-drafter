@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { candidatesService, templatesService, companySettingsService } from '@/lib/database'
+import { initializeDatabase, seedInitialData } from '@/lib/initDb'
 
 export interface Candidate {
   id: string
@@ -82,12 +83,27 @@ export const useStore = create<Store>((set, get) => ({
 
     set({ isLoading: true, error: null })
     try {
+      // Check and initialize database
+      const dbInitialized = await initializeDatabase()
+      if (!dbInitialized) {
+        set({
+          error: 'Database tables not found. Please run the SQL schema from supabase-schema.sql in your Supabase dashboard. See DATABASE_SETUP.md for instructions.',
+          isLoading: false
+        })
+        return
+      }
+
+      // Seed initial data if needed
+      await seedInitialData()
+
+      // Load all data
       await Promise.all([
         get().loadCandidates(),
         get().loadTemplates(),
         get().loadCompanySettings(),
       ])
 
+      // Set up real-time subscriptions
       candidatesService.subscribe(() => {
         get().loadCandidates()
       })
