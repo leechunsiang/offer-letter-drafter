@@ -69,20 +69,28 @@ const mapDbSettingsToSettings = (dbSettings: DbCompanySettings): CompanySettings
 })
 
 export const candidatesService = {
-  async getAll(): Promise<Candidate[]> {
-    const { data, error } = await supabase
+  async getAll(teamId?: string): Promise<Candidate[]> {
+    let query = supabase
       .from('candidates')
       .select('*')
       .order('created_at', { ascending: false })
+
+    if (teamId) {
+      query = query.eq('team_id', teamId)
+    }
+
+    const { data, error } = await query
 
     if (error) throw error
     return (data as DbCandidate[]).map(mapDbCandidateToCandidate)
   },
 
-  async create(candidate: Omit<Candidate, 'id' | 'status'>): Promise<Candidate> {
+  async create(candidate: Omit<Candidate, 'id' | 'status'>, teamId?: string): Promise<Candidate> {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('User not authenticated')
     const user = session.user
+
+    if (!teamId) throw new Error('Team ID is required')
 
     const { data, error } = await supabase
       .from('candidates')
@@ -93,6 +101,7 @@ export const candidatesService = {
         offer_date: candidate.offerDate,
         status: 'Pending',
         user_id: user.id,
+        team_id: teamId,
       })
       .select()
       .single()
@@ -122,12 +131,13 @@ export const candidatesService = {
     if (error) throw error
   },
 
-  subscribe(callback: () => void) {
+  subscribe(callback: () => void, teamId?: string) {
+    const filter = teamId ? `team_id=eq.${teamId}` : undefined
     const channel = supabase
       .channel('candidates-changes')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'candidates' },
+        { event: '*', schema: 'public', table: 'candidates', filter },
         callback
       )
       .subscribe()
@@ -139,27 +149,35 @@ export const candidatesService = {
 }
 
 export const templatesService = {
-  async getAll(): Promise<Template[]> {
-    const { data, error } = await supabase
+  async getAll(teamId?: string): Promise<Template[]> {
+    let query = supabase
       .from('templates')
       .select('*')
       .order('created_at', { ascending: false })
+
+    if (teamId) {
+      query = query.eq('team_id', teamId)
+    }
+
+    const { data, error } = await query
 
     if (error) throw error
     return (data as DbTemplate[]).map(mapDbTemplateToTemplate)
   },
 
-  async create(template: Omit<Template, 'id'>): Promise<Template> {
+  async create(template: Omit<Template, 'id'>, teamId?: string): Promise<Template> {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('User not authenticated')
     const user = session.user
 
-    // If this is set as default, unset other defaults first
+    if (!teamId) throw new Error('Team ID is required')
+
+    // If this is set as default, unset other defaults first for this team
     if (template.isDefault) {
       await supabase
         .from('templates')
         .update({ is_default: false })
-        .eq('user_id', user.id)
+        .eq('team_id', teamId)
         .neq('id', '00000000-0000-0000-0000-000000000000') // Safety check
     }
 
@@ -170,6 +188,7 @@ export const templatesService = {
         content: template.content,
         is_default: template.isDefault,
         user_id: user.id,
+        team_id: teamId,
       })
       .select()
       .single()
@@ -178,21 +197,20 @@ export const templatesService = {
     return mapDbTemplateToTemplate(data as DbTemplate)
   },
 
-  async update(id: string, updates: Partial<Template>): Promise<Template> {
+  async update(id: string, updates: Partial<Template>, teamId?: string): Promise<Template> {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('User not authenticated')
-    const user = session.user
 
-    // If setting as default, unset all others first
-    if (updates.isDefault === true) {
+    // If setting as default, unset all others first for this team
+    if (updates.isDefault === true && teamId) {
       await supabase
         .from('templates')
         .update({ is_default: false })
-        .eq('user_id', user.id)
+        .eq('team_id', teamId)
         .neq('id', id)
     }
 
-    const dbUpdates: any = {}
+    const dbUpdates: Partial<DbTemplate> = {}
     if (updates.name !== undefined) dbUpdates.name = updates.name
     if (updates.content !== undefined) dbUpdates.content = updates.content
     if (updates.isDefault !== undefined) dbUpdates.is_default = updates.isDefault
@@ -217,12 +235,13 @@ export const templatesService = {
     if (error) throw error
   },
 
-  subscribe(callback: () => void) {
+  subscribe(callback: () => void, teamId?: string) {
+    const filter = teamId ? `team_id=eq.${teamId}` : undefined
     const channel = supabase
       .channel('templates-changes')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'templates' },
+        { event: '*', schema: 'public', table: 'templates', filter },
         callback
       )
       .subscribe()
@@ -234,22 +253,18 @@ export const templatesService = {
 }
 
 export const companySettingsService = {
-  async get(): Promise<CompanySettings | null> {
-    console.log('companySettingsService.get called');
-    const { data: { session } } = await supabase.auth.getSession()
+  async get(teamId?: string): Promise<CompanySettings | null> {
+    console.log('companySettingsService.get called', { teamId });
     
-    let query = supabase
+    if (!teamId) {
+      console.log('No team ID provided, returning null');
+      return null;
+    }
+
+    const query = supabase
       .from('company_settings')
       .select('*')
-    
-    if (session?.user) {
-      // If authenticated, prefer user's settings
-      query = query.eq('user_id', session.user.id)
-    } else {
-      // If not authenticated (or just to be safe), maybe we shouldn't return anything?
-      // Or return the default row if it exists and is visible?
-      // For now, let's rely on RLS, but if we have a user, we MUST filter by it.
-    }
+      .eq('team_id', teamId)
 
     const { data, error } = await query.limit(1).maybeSingle()
 
@@ -262,17 +277,19 @@ export const companySettingsService = {
     return mapDbSettingsToSettings(data as DbCompanySettings)
   },
 
-  async upsert(settings: CompanySettings): Promise<CompanySettings> {
-    console.log('companySettingsService.upsert called', settings);
+  async upsert(settings: CompanySettings, teamId?: string): Promise<CompanySettings> {
+    console.log('companySettingsService.upsert called', { settings, teamId });
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw new Error('User not authenticated')
     const user = session.user
 
-    // Check for EXISTING settings for THIS USER
+    if (!teamId) throw new Error('Team ID is required')
+
+// Check for EXISTING settings for THIS TEAM
     const { data: existingData } = await supabase
       .from('company_settings')
       .select('id')
-      .eq('user_id', user.id)
+      .eq('team_id', teamId)
       .limit(1)
       .maybeSingle()
     
@@ -288,6 +305,7 @@ export const companySettingsService = {
       sender_name: settings.emailConfig.senderName,
       sender_email: settings.emailConfig.senderEmail,
       user_id: user.id,
+      team_id: teamId,
     }
 
     if (existingData) {
@@ -320,12 +338,13 @@ export const companySettingsService = {
     }
   },
 
-  subscribe(callback: () => void) {
+  subscribe(callback: () => void, teamId?: string) {
+    const filter = teamId ? `team_id=eq.${teamId}` : undefined
     const channel = supabase
       .channel('settings-changes')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'company_settings' },
+        { event: '*', schema: 'public', table: 'company_settings', filter },
         callback
       )
       .subscribe()

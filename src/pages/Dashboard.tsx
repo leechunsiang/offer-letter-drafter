@@ -6,8 +6,11 @@ import { useStore } from "@/store/useStore"
 import { Users, FileCheck, Clock, Plus, FileText, ArrowRight, CheckCircle } from "lucide-react"
 import { AddCandidateDialog } from "@/components/candidates/AddCandidateDialog"
 import { cn } from "@/lib/utils"
+import { useTeam } from "@/contexts/TeamContext"
+import TeamSetupOverlay from "@/components/TeamSetupOverlay"
 
 export default function Dashboard() {
+  const { currentTeam } = useTeam()
   const candidates = useStore((state) => state.candidates)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   
@@ -19,7 +22,12 @@ export default function Dashboard() {
   const recentCandidates = candidates.slice(0, 5)
 
   return (
-    <div className="space-y-8">
+    <div className="relative space-y-8">
+      {/* Show overlay if no team */}
+      {!currentTeam && <TeamSetupOverlay />}
+      
+      {/* Main Dashboard Content - greyed out when no team */}
+      <div className={!currentTeam ? 'opacity-30 pointer-events-none' : ''}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
@@ -148,6 +156,7 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+      </div>
       </div>
 
       <AddCandidateDialog 
