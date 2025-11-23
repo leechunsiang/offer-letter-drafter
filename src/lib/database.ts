@@ -183,8 +183,8 @@ export const templatesService = {
     if (!session?.user) throw new Error('User not authenticated')
     const user = session.user
 
-    // If setting as default, unset others
-    if (updates.isDefault) {
+    // If setting as default, unset all others first
+    if (updates.isDefault === true) {
       await supabase
         .from('templates')
         .update({ is_default: false })

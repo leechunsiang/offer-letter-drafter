@@ -1,8 +1,15 @@
 import { useState, useRef, useEffect } from 'react'
 import { Check } from 'lucide-react'
 import { Button } from './ui/button'
-import { Input } from './ui/input'
-import { Label } from './ui/label'
+import Color from 'color'
+import {
+  ColorPicker as ShadcnColorPicker,
+  ColorPickerSelection,
+  ColorPickerHue,
+  ColorPickerAlpha,
+  ColorPickerOutput,
+  ColorPickerEyeDropper,
+} from '@/components/ui/shadcn-io/color-picker'
 
 interface ColorPickerProps {
   onSelect: (color: string) => void
@@ -22,7 +29,7 @@ const PRESET_COLORS = [
 ]
 
 export default function ColorPicker({ onSelect, onClose, currentColor }: ColorPickerProps) {
-  const [customColor, setCustomColor] = useState(currentColor || '')
+  const [color, setColor] = useState(currentColor || '#000000')
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -38,12 +45,16 @@ export default function ColorPicker({ onSelect, onClose, currentColor }: ColorPi
     }
   }, [onClose])
 
-  const handleCustomColorSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (customColor) {
-      onSelect(customColor)
-      onClose()
-    }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleColorChange = (value: any) => {
+    // value is [r, g, b, a]
+    const hex = Color.rgb(value).hex()
+    setColor(hex)
+  }
+
+  const handleApply = () => {
+    onSelect(color)
+    onClose()
   }
 
   return (
@@ -52,39 +63,39 @@ export default function ColorPicker({ onSelect, onClose, currentColor }: ColorPi
       className="absolute top-full left-0 mt-2 p-3 bg-popover border rounded-md shadow-md z-50 w-64 animate-in fade-in zoom-in-95 duration-200"
     >
       <div className="grid grid-cols-4 gap-2 mb-3">
-        {PRESET_COLORS.map((color) => (
+        {PRESET_COLORS.map((presetColor) => (
           <button
-            key={color}
+            key={presetColor}
             className="w-8 h-8 rounded-full border border-border hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            style={{ backgroundColor: color }}
+            style={{ backgroundColor: presetColor }}
             onClick={() => {
-              onSelect(color)
+              onSelect(presetColor)
               onClose()
             }}
-            title={color}
+            title={presetColor}
           >
-            {currentColor === color && (
+            {currentColor === presetColor && (
               <Check className="w-4 h-4 text-white mx-auto drop-shadow-md" />
             )}
           </button>
         ))}
       </div>
       
-      <form onSubmit={handleCustomColorSubmit} className="flex flex-col gap-2">
-        <Label htmlFor="custom-color" className="text-xs">Custom Hex</Label>
-        <div className="flex gap-2">
-          <Input
-            id="custom-color"
-            value={customColor}
-            onChange={(e) => setCustomColor(e.target.value)}
-            placeholder="#000000"
-            className="h-8 text-xs"
-          />
-          <Button type="submit" size="sm" className="h-8 px-2">
-            Apply
-          </Button>
-        </div>
-      </form>
+      <div className="flex flex-col gap-3">
+        <ShadcnColorPicker value={color} onChange={handleColorChange}>
+          <ColorPickerSelection className="h-32 w-full rounded-md" />
+          <ColorPickerHue />
+          <ColorPickerAlpha />
+          <div className="flex gap-2 items-center">
+             <ColorPickerOutput className="w-full" />
+             <ColorPickerEyeDropper />
+          </div>
+        </ShadcnColorPicker>
+
+        <Button size="sm" onClick={handleApply} className="w-full">
+          Apply
+        </Button>
+      </div>
     </div>
   )
 }

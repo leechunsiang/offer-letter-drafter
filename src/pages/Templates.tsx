@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import RichTextEditor from "@/components/RichTextEditor"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Save, Trash2 } from "lucide-react"
+import { Plus, Save, Trash2, Star } from "lucide-react"
 
 import { useToast } from "@/contexts/ToastContext"
 
@@ -13,10 +13,9 @@ export default function Templates() {
   const { templates, addTemplate, updateTemplate, deleteTemplate } = useStore()
   const { showToast } = useToast()
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState<{ name: string; content: string; isDefault: boolean }>({
+  const [editForm, setEditForm] = useState<{ name: string; content: string }>({
     name: "",
     content: "",
-    isDefault: false,
   })
 
   const [isSaving, setIsSaving] = useState(false)
@@ -29,8 +28,7 @@ export default function Templates() {
     if (template) {
       setEditForm({ 
         name: template.name, 
-        content: template.content,
-        isDefault: template.isDefault || false
+        content: template.content
       })
     }
   }
@@ -45,8 +43,7 @@ export default function Templates() {
       if (template) {
         setEditForm({ 
           name: template.name, 
-          content: template.content,
-          isDefault: template.isDefault || false
+          content: template.content
         })
       }
     }
@@ -70,21 +67,20 @@ export default function Templates() {
       if (selectedTemplateId && selectedTemplateId !== 'new') {
         await updateTemplate(selectedTemplateId, {
           name: editForm.name,
-          content: editForm.content,
-          isDefault: editForm.isDefault
+          content: editForm.content
         })
         showToast('Template updated successfully!', 'success')
       } else {
         await addTemplate({ 
           name: editForm.name, 
           content: editForm.content,
-          isDefault: editForm.isDefault
+          isDefault: false
         })
         // After creating, we can either stay on the new one (if we get ID back) or reset
         // For now, let's reset to "New" state to allow adding another, or maybe select the new one?
         // The store updates `templates`, so the useEffect might pick it up if we set to null.
         // But let's just reset form for now.
-        setEditForm({ name: "New Template", content: "", isDefault: false })
+        setEditForm({ name: "New Template", content: "" })
         setSelectedTemplateId('new') 
         showToast('Template created successfully!', 'success')
       }
@@ -108,7 +104,7 @@ export default function Templates() {
       
       // Reset to new template state
       setSelectedTemplateId('new')
-      setEditForm({ name: "New Template", content: "", isDefault: false })
+      setEditForm({ name: "New Template", content: "" })
     } catch (error) {
       console.error('Failed to delete template:', error)
       showToast('Failed to delete template. Please try again.', 'error')
@@ -119,14 +115,35 @@ export default function Templates() {
 
   const handleNew = () => {
     setSelectedTemplateId('new')
-    setEditForm({ name: "New Template", content: "", isDefault: false })
+    setEditForm({ name: "New Template", content: "" })
+  }
+
+  const handleSetDefault = async (templateId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const template = templates.find((t) => t.id === templateId)
+    if (!template) return
+
+    try {
+      // Toggle the default status
+      const newDefaultStatus = !template.isDefault
+      await updateTemplate(templateId, { isDefault: newDefaultStatus })
+      
+      if (newDefaultStatus) {
+        showToast('Default template updated successfully', 'success')
+      } else {
+        showToast('Template unmarked as default', 'success')
+      }
+    } catch (error) {
+      console.error('Failed to set default template:', error)
+      showToast('Failed to set default template. Please try again.', 'error')
+    }
   }
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] gap-6">
-      <div className="w-64 flex-shrink-0 space-y-4">
+    <div className="flex gap-6 h-[calc(100vh-8rem)]">
+      <div className="w-80 flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">Templates</h2>
+          <h2 className="text-lg font-semibold">Templates</h2>
           <Button size="sm" variant="outline" onClick={handleNew}>
             <Plus className="h-4 w-4" />
           </Button>
@@ -142,13 +159,19 @@ export default function Templates() {
                   : "bg-card"
               }`}
             >
-              <div className="font-medium flex items-center justify-between">
-                <span className="truncate">{template.name}</span>
-                {template.isDefault && (
-                  <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                    Default
-                  </span>
-                )}
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate font-medium">{template.name}</span>
+                <button
+                  onClick={(e) => handleSetDefault(template.id, e)}
+                  className={`flex-shrink-0 p-1 rounded transition-colors ${
+                    template.isDefault 
+                      ? "text-yellow-500 hover:text-yellow-600" 
+                      : "text-muted-foreground hover:text-yellow-500"
+                  }`}
+                  title={template.isDefault ? "Default template" : "Set as default"}
+                >
+                  <Star className={`h-4 w-4 ${template.isDefault ? "fill-current" : ""}`} />
+                </button>
               </div>
             </div>
           ))}
@@ -184,20 +207,6 @@ export default function Templates() {
                     setEditForm({ ...editForm, name: e.target.value })
                   }
                 />
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="isDefault"
-                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                  checked={editForm.isDefault}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, isDefault: e.target.checked })
-                  }
-                />
-                <Label htmlFor="isDefault" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  Set as default template
-                </Label>
               </div>
             </div>
             <div className="flex-1 flex flex-col min-h-0 gap-2">

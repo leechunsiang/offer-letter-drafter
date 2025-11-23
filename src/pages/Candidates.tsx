@@ -17,6 +17,11 @@ export default function Candidates() {
   const [isManageMode, setIsManageMode] = useState(false)
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set())
 
+  // Get the default template or fallback to first template
+  const getDefaultTemplate = () => {
+    return templates.find(t => t.isDefault) || templates[0]
+  }
+
   const handlePreview = (candidate: Candidate) => {
     console.log("Preview clicked for", candidate.name)
     if (templates.length === 0) {
@@ -32,7 +37,11 @@ export default function Candidates() {
     if (!targetCandidate || templates.length === 0) return
 
     console.log("Generating PDF for", targetCandidate.name)
-    const template = templates[0]
+    const template = getDefaultTemplate()
+    if (!template) {
+      alert("Please create a template first.")
+      return
+    }
     await generateOfferPDF(targetCandidate, template, companySettings)
     try {
       await updateCandidateStatus(targetCandidate.id, "Generated")
@@ -212,7 +221,7 @@ export default function Candidates() {
         open={previewOpen} 
         onOpenChange={setPreviewOpen}
         candidate={selectedCandidate}
-        template={templates[0]}
+        template={getDefaultTemplate()}
         companySettings={companySettings}
         onGenerate={() => handleGenerate()}
       />
