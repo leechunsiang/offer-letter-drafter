@@ -1,27 +1,14 @@
 import { useState } from "react"
-import { useStore } from "@/store/useStore"
+import { useStore, Candidate } from "@/store/useStore"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Plus, CheckCircle, Clock, FileText, Trash2, X } from "lucide-react"
+import { Plus, CheckCircle, Clock, FileText, Trash2, X, Eye } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { generateOfferPDF } from "@/lib/pdfGenerator"
-
 import { PreviewDialog } from "@/components/candidates/PreviewDialog"
-import { Eye } from "lucide-react"
-import { Candidate } from "@/store/useStore"
+import { AddCandidateDialog } from "@/components/candidates/AddCandidateDialog"
 
 export default function Candidates() {
-  const { candidates, templates, addCandidate, updateCandidateStatus, deleteCandidate, companySettings } = useStore()
+  const { candidates, templates, updateCandidateStatus, deleteCandidate, companySettings } = useStore()
   const [isOpen, setIsOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
@@ -29,29 +16,6 @@ export default function Candidates() {
   // Manage mode state
   const [isManageMode, setIsManageMode] = useState(false)
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set())
-  
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    role: "",
-    offerDate: new Date().toISOString().split("T")[0],
-  })
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      await addCandidate(formData)
-      setIsOpen(false)
-      setFormData({
-        name: "",
-        email: "",
-        role: "",
-        offerDate: new Date().toISOString().split("T")[0],
-      })
-    } catch (error) {
-      console.error('Failed to add candidate:', error)
-    }
-  }
 
   const handlePreview = (candidate: Candidate) => {
     console.log("Preview clicked for", candidate.name)
@@ -128,74 +92,16 @@ export default function Candidates() {
               Manage
             </Button>
           )}
-          <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> Add Candidate
-              </Button>
-            </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Candidate</DialogTitle>
-              <DialogDescription>
-                Enter the candidate's details to add them to the pipeline.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Input
-                  id="role"
-                  value={formData.role}
-                  onChange={(e) =>
-                    setFormData({ ...formData, role: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="date">Offer Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.offerDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, offerDate: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <DialogFooter>
-                <Button type="submit">Add Candidate</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+          <Button onClick={() => setIsOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" /> Add Candidate
+          </Button>
+          
+          <AddCandidateDialog 
+            open={isOpen} 
+            onOpenChange={setIsOpen} 
+          />
+        </div>
       </div>
-    </div>
 
       <div className="rounded-md border bg-card">
         <div className="relative w-full overflow-auto">
