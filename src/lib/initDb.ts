@@ -26,82 +26,45 @@ export async function initializeDatabase() {
 
 export async function seedInitialData() {
   try {
-    // Check if data already exists
-    const { data: existingCandidates } = await supabase
-      .from('candidates')
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      console.log('No authenticated user, skipping seed data')
+      return true
+    }
+
+    // Check if data already exists for this user
+    const { data: existingTemplates } = await supabase
+      .from('templates')
       .select('id')
       .limit(1)
 
-    if (existingCandidates && existingCandidates.length > 0) {
+    if (existingTemplates && existingTemplates.length > 0) {
       console.log('Data already seeded')
       return true
     }
 
-    console.log('Seeding initial data...')
-
-    // Seed candidates
-    const { error: candidatesError } = await supabase
-      .from('candidates')
-      .insert([
-        {
-          name: 'John Doe',
-          email: 'john@example.com',
-          role: 'Software Engineer',
-          status: 'Pending',
-          offer_date: '2023-10-26',
-        },
-        {
-          name: 'Jane Smith',
-          email: 'jane@example.com',
-          role: 'Product Manager',
-          status: 'Generated',
-          offer_date: '2023-10-25',
-        },
-      ])
-
-    if (candidatesError) {
-      console.error('Error seeding candidates:', candidatesError)
-      return false
-    }
+    console.log('Seeding initial data for new user...')
 
     // Seed template
-    const { error: templateError } = await supabase
-      .from('templates')
-      .insert({
-        name: 'Standard Offer',
-        content: `Dear {{name}},
-
-We are pleased to offer you the position of {{role}} at our company.
-
-Start Date: {{offerDate}}
-
-Sincerely,
-HR Team`,
-      })
-
-    if (templateError) {
-      console.error('Error seeding template:', templateError)
-      return false
-    }
+    await supabase.from('templates').insert({
+      name: 'Standard Offer',
+      content: 'Dear {{name}},<br><br>We are pleased to offer you the position of {{role}} at our company.<br><br>Start Date: {{offerDate}}<br><br>Sincerely, HR',
+      user_id: user.id,
+    })
 
     // Seed company settings
-    const { error: settingsError } = await supabase
-      .from('company_settings')
-      .insert({
-        company_name: '',
-        company_address: '',
-        company_website: '',
-        company_phone: '',
-        logo_url: '',
-        primary_color: '#000000',
-        sender_name: '',
-        sender_email: '',
-      })
-
-    if (settingsError) {
-      console.error('Error seeding settings:', settingsError)
-      return false
-    }
+    await supabase.from('company_settings').insert({
+      company_name: '',
+      company_address: '',
+      company_website: '',
+      company_phone: '',
+      logo_url: '',
+      primary_color: '#000000',
+      sender_name: '',
+      sender_email: '',
+      user_id: user.id,
+    })
 
     console.log('Initial data seeded successfully')
     return true

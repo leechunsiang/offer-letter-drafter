@@ -5,10 +5,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Save, Upload } from "lucide-react"
+import { useToast } from "@/contexts/ToastContext"
 
 export default function Settings() {
   const { companySettings, updateCompanySettings } = useStore()
+  const { showToast } = useToast()
   const [formData, setFormData] = useState(companySettings)
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     setFormData(companySettings)
@@ -30,7 +33,7 @@ export default function Settings() {
       console.log("Logo file selected:", file.name, file.type, file.size);
       
       if (file.size > 2 * 1024 * 1024) {
-        alert("File size exceeds 2MB limit.");
+        showToast("File size exceeds 2MB limit.", "error");
         return;
       }
 
@@ -53,12 +56,15 @@ export default function Settings() {
 
 
   const handleSave = async () => {
+    setIsSaving(true)
     try {
       await updateCompanySettings(formData)
-      alert('Settings saved successfully!')
+      showToast('Settings saved successfully!', 'success')
     } catch (error) {
       console.error('Failed to save settings:', error)
-      alert('Failed to save settings. Please try again.')
+      showToast('Failed to save settings. Please try again.', 'error')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -66,8 +72,9 @@ export default function Settings() {
     <div className="space-y-6 max-w-4xl mx-auto pb-10">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
-        <Button onClick={handleSave}>
-          <Save className="mr-2 h-4 w-4" /> Save Changes
+        <Button onClick={handleSave} disabled={isSaving}>
+          <Save className="mr-2 h-4 w-4" /> 
+          {isSaving ? 'Saving...' : 'Save Changes'}
         </Button>
       </div>
 
@@ -221,3 +228,4 @@ export default function Settings() {
     </div>
   )
 }
+

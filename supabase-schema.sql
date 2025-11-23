@@ -8,8 +8,9 @@
 -- Create candidates table
 CREATE TABLE IF NOT EXISTS candidates (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
   name text NOT NULL CHECK (length(trim(name)) > 0),
-  email text NOT NULL UNIQUE CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
+  email text NOT NULL CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
   role text NOT NULL CHECK (length(trim(role)) > 0),
   status text NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'Generated')),
   offer_date date NOT NULL,
@@ -20,8 +21,10 @@ CREATE TABLE IF NOT EXISTS candidates (
 -- Create templates table
 CREATE TABLE IF NOT EXISTS templates (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name text NOT NULL UNIQUE CHECK (length(trim(name)) > 0),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  name text NOT NULL CHECK (length(trim(name)) > 0),
   content text NOT NULL CHECK (length(trim(content)) > 0),
+  is_default boolean DEFAULT false,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
@@ -29,6 +32,7 @@ CREATE TABLE IF NOT EXISTS templates (
 -- Create company_settings table
 CREATE TABLE IF NOT EXISTS company_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
   company_name text DEFAULT '',
   company_address text DEFAULT '',
   company_website text DEFAULT '',
@@ -45,7 +49,10 @@ CREATE TABLE IF NOT EXISTS company_settings (
 CREATE INDEX IF NOT EXISTS idx_candidates_status ON candidates(status);
 CREATE INDEX IF NOT EXISTS idx_candidates_email ON candidates(email);
 CREATE INDEX IF NOT EXISTS idx_candidates_created_at ON candidates(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_candidates_user_id ON candidates(user_id);
 CREATE INDEX IF NOT EXISTS idx_templates_name ON templates(name);
+CREATE INDEX IF NOT EXISTS idx_templates_user_id ON templates(user_id);
+CREATE INDEX IF NOT EXISTS idx_company_settings_user_id ON company_settings(user_id);
 
 -- Enable Row Level Security
 ALTER TABLE candidates ENABLE ROW LEVEL SECURITY;
@@ -68,21 +75,21 @@ DROP POLICY IF EXISTS "public_settings_insert" ON company_settings;
 DROP POLICY IF EXISTS "public_settings_update" ON company_settings;
 DROP POLICY IF EXISTS "public_settings_delete" ON company_settings;
 
--- RLS Policies (public access for single-tenant app using anon key)
-CREATE POLICY "public_candidates_select" ON candidates FOR SELECT TO anon USING (true);
-CREATE POLICY "public_candidates_insert" ON candidates FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "public_candidates_update" ON candidates FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "public_candidates_delete" ON candidates FOR DELETE TO anon USING (true);
+-- RLS Policies (Authenticated users only)
+CREATE POLICY "Users can view own candidates" ON candidates FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own candidates" ON candidates FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own candidates" ON candidates FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own candidates" ON candidates FOR DELETE USING (auth.uid() = user_id);
 
-CREATE POLICY "public_templates_select" ON templates FOR SELECT TO anon USING (true);
-CREATE POLICY "public_templates_insert" ON templates FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "public_templates_update" ON templates FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "public_templates_delete" ON templates FOR DELETE TO anon USING (true);
+CREATE POLICY "Users can view own templates" ON templates FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own templates" ON templates FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own templates" ON templates FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own templates" ON templates FOR DELETE USING (auth.uid() = user_id);
 
-CREATE POLICY "public_settings_select" ON company_settings FOR SELECT TO anon USING (true);
-CREATE POLICY "public_settings_insert" ON company_settings FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "public_settings_update" ON company_settings FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "public_settings_delete" ON company_settings FOR DELETE TO anon USING (true);
+CREATE POLICY "Users can view own settings" ON company_settings FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own settings" ON company_settings FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own settings" ON company_settings FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own settings" ON company_settings FOR DELETE USING (auth.uid() = user_id);
 
 -- Create update trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()

@@ -1,8 +1,10 @@
 import { Link, Outlet, useLocation } from "react-router-dom"
-import { LayoutDashboard, Users, FileText, Settings } from "lucide-react"
+import { LayoutDashboard, Users, FileText, Settings, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useStore } from "@/store/useStore"
+import { useAuth } from "@/contexts/AuthContext"
 import { LoadingPage } from "./LoadingSpinner"
+import { Button } from "./ui/button"
 
 const sidebarItems = [
   {
@@ -30,6 +32,7 @@ const sidebarItems = [
 export function Layout() {
   const location = useLocation()
   const { isLoading, initialized, error } = useStore()
+  const { user, signOut } = useAuth()
 
   if (!initialized && isLoading) {
     return <LoadingPage />
@@ -59,21 +62,39 @@ export function Layout() {
           <FileText className="h-6 w-6" />
           <span className="text-lg font-bold">Offer Drafter</span>
         </div>
-        <nav className="flex flex-col gap-2 p-4">
-          {sidebarItems.map((item) => (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                location.pathname === item.href &&
-                  "bg-muted text-primary font-medium"
-              )}
+        <nav className="flex flex-1 flex-col gap-2 p-4">
+          <div className="flex-1 space-y-2">
+            {sidebarItems.map((item) => (
+              <Link
+                key={item.href}
+                to={item.href}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+                  location.pathname === item.href &&
+                    "bg-muted text-primary font-medium"
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.title}
+              </Link>
+            ))}
+          </div>
+          
+          {/* User section */}
+          <div className="border-t pt-4 space-y-2">
+            <div className="px-3 py-2">
+              <p className="text-xs text-muted-foreground">Signed in as</p>
+              <p className="text-sm font-medium truncate">{user?.email}</p>
+            </div>
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-muted-foreground hover:text-destructive"
+              onClick={() => signOut()}
             >
-              <item.icon className="h-4 w-4" />
-              {item.title}
-            </Link>
-          ))}
+              <LogOut className="h-4 w-4 mr-3" />
+              Logout
+            </Button>
+          </div>
         </nav>
       </aside>
       <main className="flex flex-1 flex-col sm:pl-64">

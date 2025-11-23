@@ -36,6 +36,30 @@ export default function RichTextEditor({
     handleInput()
   }
 
+  const insertVariable = (variable: string) => {
+    if (editorRef.current) {
+      editorRef.current.focus()
+      const selection = window.getSelection()
+      const range = selection?.getRangeAt(0)
+      
+      if (range) {
+        const textNode = document.createTextNode(`{{${variable}}}`)
+        range.insertNode(textNode)
+        
+        // Move cursor after inserted text
+        range.setStartAfter(textNode)
+        range.setEndAfter(textNode)
+        selection?.removeAllRanges()
+        selection?.addRange(range)
+      } else {
+        // If no selection, append to end
+        editorRef.current.innerHTML += `{{${variable}}}`
+      }
+      
+      handleInput()
+    }
+  }
+
   const handleFontSize = () => {
     const size = prompt('Enter font size (e.g., 12, 14, 16, 18, 24):', '14')
     if (size) {
@@ -59,92 +83,125 @@ export default function RichTextEditor({
     }
   }
 
+  const variables = [
+    { label: 'Name', value: 'name' },
+    { label: 'Role', value: 'role' },
+    { label: 'Offer Date', value: 'offerDate' },
+    { label: 'Company Name', value: 'companyName' },
+    { label: 'Company Address', value: 'companyAddress' },
+    { label: 'Company Website', value: 'companyWebsite' },
+    { label: 'Company Phone', value: 'companyPhone' },
+    { label: 'Sender Name', value: 'senderName' },
+    { label: 'Sender Email', value: 'senderEmail' },
+  ]
+
   return (
-    <div className={`rich-text-editor border rounded-md ${className}`}>
+    <div className={`rich-text-editor border rounded-md flex flex-col min-h-0 overflow-hidden h-full ${className}`}>
       {/* Toolbar */}
-      <div className="flex flex-wrap gap-1 p-2 border-b bg-muted/50">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => execCommand('bold')}
-          title="Bold (Ctrl+B)"
-          className="h-8 w-8 p-0"
-        >
-          <Bold className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => execCommand('italic')}
-          title="Italic (Ctrl+I)"
-          className="h-8 w-8 p-0"
-        >
-          <Italic className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => execCommand('underline')}
-          title="Underline (Ctrl+U)"
-          className="h-8 w-8 p-0"
-        >
-          <Underline className="h-4 w-4" />
-        </Button>
-        <div className="w-px h-8 bg-border mx-1" />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handleFontSize}
-          title="Font Size"
-          className="h-8 w-8 p-0"
-        >
-          <Type className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handleColor}
-          title="Text Color"
-          className="h-8 w-8 p-0"
-        >
-          <Palette className="h-4 w-4" />
-        </Button>
-        <div className="w-px h-8 bg-border mx-1" />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => execCommand('justifyLeft')}
-          title="Align Left"
-          className="h-8 px-2 text-xs"
-        >
-          Left
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => execCommand('justifyCenter')}
-          title="Align Center"
-          className="h-8 px-2 text-xs"
-        >
-          Center
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => execCommand('justifyRight')}
-          title="Align Right"
-          className="h-8 px-2 text-xs"
-        >
-          Right
-        </Button>
+      <div className="flex flex-col gap-2 p-2 border-b bg-muted/50">
+        {/* Formatting Toolbar */}
+        <div className="flex flex-wrap gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => execCommand('bold')}
+            title="Bold (Ctrl+B)"
+            className="h-8 w-8 p-0"
+          >
+            <Bold className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => execCommand('italic')}
+            title="Italic (Ctrl+I)"
+            className="h-8 w-8 p-0"
+          >
+            <Italic className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => execCommand('underline')}
+            title="Underline (Ctrl+U)"
+            className="h-8 w-8 p-0"
+          >
+            <Underline className="h-4 w-4" />
+          </Button>
+          <div className="w-px h-8 bg-border mx-1" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleFontSize}
+            title="Font Size"
+            className="h-8 w-8 p-0"
+          >
+            <Type className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleColor}
+            title="Text Color"
+            className="h-8 w-8 p-0"
+          >
+            <Palette className="h-4 w-4" />
+          </Button>
+          <div className="w-px h-8 bg-border mx-1" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => execCommand('justifyLeft')}
+            title="Align Left"
+            className="h-8 px-2 text-xs"
+          >
+            Left
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => execCommand('justifyCenter')}
+            title="Align Center"
+            className="h-8 px-2 text-xs"
+          >
+            Center
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => execCommand('justifyRight')}
+            title="Align Right"
+            className="h-8 px-2 text-xs"
+          >
+            Right
+          </Button>
+        </div>
+
+        {/* Variables Toolbar */}
+        <div className="flex flex-wrap gap-1 pt-2 border-t">
+          <span className="text-xs text-muted-foreground self-center mr-2">Insert Variable:</span>
+          {variables.map((variable) => (
+            <Button
+              key={variable.value}
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => insertVariable(variable.value)}
+              title={`Insert {{${variable.value}}}`}
+              className="h-7 px-2 text-xs"
+            >
+              {variable.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {/* Editor */}
@@ -152,7 +209,7 @@ export default function RichTextEditor({
         ref={editorRef}
         contentEditable
         onInput={handleInput}
-        className="min-h-[300px] p-4 focus:outline-none prose prose-sm max-w-none"
+        className="flex-1 overflow-y-auto p-4 focus:outline-none prose prose-sm max-w-none"
         data-placeholder={placeholder}
         suppressContentEditableWarning
       />

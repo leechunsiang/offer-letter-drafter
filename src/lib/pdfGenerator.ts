@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { Candidate, Template, CompanySettings } from '@/store/useStore';
 
 export const generateOfferContent = (
@@ -18,8 +19,6 @@ export const generateOfferContent = (
     .replace(/{{senderEmail}}/g, companySettings.emailConfig.senderEmail);
 };
 
-
-
 export const generateOfferPDF = async (
   candidate: Candidate, 
   template: Template, 
@@ -28,166 +27,90 @@ export const generateOfferPDF = async (
   // 1. Substitute variables
   const content = generateOfferContent(candidate, template, companySettings);
 
-  // 2. Create PDF with text (not image)
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const margin = 20;
-  const maxWidth = pageWidth - (margin * 2);
+  // 2. Create a temporary container for rendering
+  const container = document.createElement('div');
+  container.style.position = 'absolute';
+  container.style.left = '-9999px';
+  container.style.top = '0';
+  container.style.width = '210mm'; // A4 width
+  container.style.minHeight = '297mm'; // A4 height
+  container.style.padding = '20mm'; // Margins
+  container.style.backgroundColor = '#ffffff';
+  container.style.color = '#000000';
+  container.style.fontFamily = 'serif'; // Match the preview font
   
-  // Set font
-  pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(12);
+  // Add specific classes to match the preview styling if needed
+  // We can also inline some styles to be safe
   
-  let yPosition = margin;
-
-  // Add logo if exists
+  // Construct the HTML structure
+  let htmlStructure = '';
+  
   // Add logo if exists
   if (companySettings.branding.logoUrl) {
-    console.log("PDF Generator: Found logo URL in settings. Length:", companySettings.branding.logoUrl.length);
-    console.log("PDF Generator: Logo URL start:", companySettings.branding.logoUrl.substring(0, 50) + "...");
-    try {
-      const logoData = companySettings.branding.logoUrl;
-      // Simple format detection
-      const format = logoData.startsWith('data:image/png') ? 'PNG' : 'JPEG';
-      console.log("PDF Generator: Detected logo format:", format);
-      
-      // Get image properties to calculate aspect ratio
-      const imgProps = pdf.getImageProperties(logoData);
-      const imgWidth = imgProps.width;
-      const imgHeight = imgProps.height;
-      const aspectRatio = imgWidth / imgHeight;
-
-      // Define maximum dimensions
-      const maxLogoWidth = 40; // mm
-      const maxLogoHeight = 20; // mm
-
-      let finalWidth = maxLogoWidth;
-      let finalHeight = maxLogoWidth / aspectRatio;
-
-      // If height exceeds max, scale by height instead
-      if (finalHeight > maxLogoHeight) {
-        finalHeight = maxLogoHeight;
-        finalWidth = maxLogoHeight * aspectRatio;
-      }
-
-      console.log(`PDF Generator: Original size: ${imgWidth}x${imgHeight}, Aspect Ratio: ${aspectRatio}`);
-      console.log(`PDF Generator: Final dimensions: ${finalWidth.toFixed(2)}mm x ${finalHeight.toFixed(2)}mm`);
-      
-      // Add logo with calculated dimensions
-      pdf.addImage(logoData, format, margin, margin, finalWidth, finalHeight);
-      console.log("PDF Generator: Logo added to PDF at margin:", margin);
-      yPosition += 30; // Move text down (20mm height + 10mm padding)
-    } catch (e) {
-      console.error("PDF Generator: Error adding logo to PDF:", e);
-    }
-  } else {
-    console.log("PDF Generator: No logo URL found in company settings");
+    htmlStructure += `
+      <div style="margin-bottom: 2rem;">
+        <img 
+          src="${companySettings.branding.logoUrl}" 
+          alt="Company Logo" 
+          style="height: 4rem; object-fit: contain;"
+        />
+      </div>
+    `;
   }
   
+  // Add content
+  // We wrap it in a div with 'prose' like styles to ensure it looks good
+  htmlStructure += `
+    <div style="font-size: 12pt; line-height: 1.5;">
+      ${content}
+    </div>
+  `;
   
-  // Split content into lines and add to PDF with formatting
-  const { parseHTMLContent, parseColor } = await import('./htmlParser')
-  const parsedLines = parseHTMLContent(content)
-  const lineHeight = 7 // mm
-  
-  for (const line of parsedLines) {
-    // Check if we need a new page
-    if (yPosition + lineHeight > pageHeight - margin) {
-      pdf.addPage()
-      yPosition = margin
-    }
+  container.innerHTML = htmlStructure;
+  document.body.appendChild(container);
 
-    // Handle alignment
-    const align = line.align || 'left'
-    let xPosition = margin
+  try {
+    // 3. Capture the container using html2canvas
+    const canvas = await html2canvas(container, {
+      scale: 2, // Higher scale for better quality
+      useCORS: true, // Allow loading cross-origin images (like logos)
+      logging: false,
+      windowWidth: container.scrollWidth,
+      windowHeight: container.scrollHeight
+    });
 
-    // Calculate line width for alignment
-    if (align === 'center' || align === 'right') {
-      let lineWidth = 0
-      for (const segment of line.segments) {
-        pdf.setFont('helvetica', segment.bold ? 'bold' : segment.italic ? 'italic' : 'normal')
-        pdf.setFontSize(segment.fontSize || 12)
-        lineWidth += pdf.getTextWidth(segment.text)
-      }
-
-      if (align === 'center') {
-        xPosition = (pageWidth - lineWidth) / 2
-      } else if (align === 'right') {
-        xPosition = pageWidth - margin - lineWidth
-      }
-    }
-
-    // Render each segment with its formatting
-    for (const segment of line.segments) {
-      // Set font style
-      let fontStyle = 'normal'
-      if (segment.bold && segment.italic) {
-        fontStyle = 'bolditalic'
-      } else if (segment.bold) {
-        fontStyle = 'bold'
-      } else if (segment.italic) {
-        fontStyle = 'italic'
-      }
-      pdf.setFont('helvetica', fontStyle)
-
-      // Set font size
-      pdf.setFontSize(segment.fontSize || 12)
-
-      // Set text color
-      if (segment.color) {
-        const rgb = parseColor(segment.color)
-        pdf.setTextColor(rgb.r, rgb.g, rgb.b)
-      } else {
-        pdf.setTextColor(0, 0, 0) // Reset to black
-      }
-
-      // Handle text wrapping for long segments
-      const segmentText = segment.text
-      const wrappedLines = pdf.splitTextToSize(segmentText, maxWidth - (xPosition - margin))
-
-      for (let i = 0; i < wrappedLines.length; i++) {
-        const wrappedLine = wrappedLines[i]
-
-        // Check if we need a new page after wrapping
-        if (yPosition + lineHeight > pageHeight - margin) {
-          pdf.addPage()
-          yPosition = margin
-          xPosition = margin // Reset x position on new page
-        }
-
-        // Add text
-        pdf.text(wrappedLine, xPosition, yPosition)
-
-        // Add underline if needed
-        if (segment.underline) {
-          const textWidth = pdf.getTextWidth(wrappedLine)
-          pdf.setLineWidth(0.1)
-          pdf.line(xPosition, yPosition + 0.5, xPosition + textWidth, yPosition + 0.5)
-        }
-
-        // Move x position for next segment (only on same line)
-        if (i === wrappedLines.length - 1) {
-          xPosition += pdf.getTextWidth(wrappedLine)
-        } else {
-          // If wrapped to next line, move y position and reset x
-          yPosition += lineHeight
-          xPosition = margin
-        }
-      }
-    }
-
-    // Move to next line
-    yPosition += lineHeight
+    // 4. Generate PDF from canvas
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
     
-    // Reset text color for next line
-    pdf.setTextColor(0, 0, 0)
-  }
+    const imgWidth = 210; // A4 width in mm
+    const pageHeight = 297; // A4 height in mm
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    
+    let heightLeft = imgHeight;
+    let position = 0;
 
-  // 3. Save PDF
-  const filename = `Offer_Letter_${candidate.name.replace(/\s+/g, '_')}.pdf`;
-  console.log("PDF Generator: Saving file as:", filename);
-  
-  // Use jsPDF's built-in save method which handles the download correctly across browsers
-  pdf.save(filename);
+    // Add first page
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    // Add subsequent pages if content overflows
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    // 5. Save PDF
+    const filename = `Offer_Letter_${candidate.name.replace(/\s+/g, '_')}.pdf`;
+    pdf.save(filename);
+
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    alert('Failed to generate PDF. Please check the console for details.');
+  } finally {
+    // Clean up
+    document.body.removeChild(container);
+  }
 };

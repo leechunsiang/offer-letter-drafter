@@ -15,6 +15,7 @@ export interface Template {
   id: string
   name: string
   content: string
+  isDefault: boolean
 }
 
 export interface CompanySettings {
@@ -49,7 +50,9 @@ interface Store {
   addCandidate: (candidate: Omit<Candidate, 'id' | 'status'>) => Promise<void>
   updateCandidateStatus: (id: string, status: 'Pending' | 'Generated') => Promise<void>
   addTemplate: (template: Omit<Template, 'id'>) => Promise<void>
-  updateTemplate: (id: string, content: string) => Promise<void>
+  updateTemplate: (id: string, updates: Partial<Template>) => Promise<void>
+  deleteTemplate: (id: string) => Promise<void>
+  deleteCandidate: (id: string) => Promise<void>
   updateCompanySettings: (settings: Partial<CompanySettings>) => Promise<void>
 }
 
@@ -199,9 +202,9 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
 
-  updateTemplate: async (id, content) => {
+  updateTemplate: async (id, updates) => {
     try {
-      const updatedTemplate = await templatesService.update(id, content)
+      const updatedTemplate = await templatesService.update(id, updates)
       set((state) => ({
         templates: state.templates.map((t) =>
           t.id === id ? updatedTemplate : t
@@ -211,6 +214,34 @@ export const useStore = create<Store>((set, get) => ({
     } catch (error) {
       console.error('Error updating template:', error)
       set({ error: error instanceof Error ? error.message : 'Failed to update template' })
+      throw error
+    }
+  },
+
+  deleteTemplate: async (id) => {
+    try {
+      await templatesService.delete(id)
+      set((state) => ({
+        templates: state.templates.filter((t) => t.id !== id),
+        error: null,
+      }))
+    } catch (error) {
+      console.error('Error deleting template:', error)
+      set({ error: error instanceof Error ? error.message : 'Failed to delete template' })
+      throw error
+    }
+  },
+
+  deleteCandidate: async (id) => {
+    try {
+      await candidatesService.delete(id)
+      set((state) => ({
+        candidates: state.candidates.filter((c) => c.id !== id),
+        error: null,
+      }))
+    } catch (error) {
+      console.error('Error deleting candidate:', error)
+      set({ error: error instanceof Error ? error.message : 'Failed to delete candidate' })
       throw error
     }
   },
