@@ -1,75 +1,88 @@
-import { supabase } from './supabase'
+import { supabase } from "./supabase";
 
 export async function initializeDatabase() {
   try {
     // Check if tables exist by trying to query candidates
-    const { error } = await supabase.from('candidates').select('id').limit(1)
+    const { error } = await supabase.from("candidates").select("id").limit(1);
 
-    if (error && error.message.includes('does not exist')) {
-      console.log('Tables do not exist. Please run the SQL schema in Supabase dashboard.')
-      console.log('Instructions: Open DATABASE_SETUP.md for details')
-      return false
+    if (error && error.message.includes("does not exist")) {
+      console.log(
+        "Tables do not exist. Please run the SQL schema in Supabase dashboard."
+      );
+      console.log("Instructions: Open DATABASE_SETUP.md for details");
+      return false;
     }
 
     if (error) {
-      console.error('Database connection error:', error)
-      return false
+      console.error("Database connection error:", error);
+      return false;
     }
 
-    console.log('Database tables verified successfully')
-    return true
+    console.log("Database tables verified successfully");
+    return true;
   } catch (err) {
-    console.error('Error checking database:', err)
-    return false
+    console.error("Error checking database:", err);
+    return false;
   }
 }
 
 export async function seedInitialData() {
   try {
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
-      console.log('No authenticated user, skipping seed data')
-      return true
+      console.log("No authenticated user, skipping seed data");
+      return true;
     }
 
-    // Check if data already exists for this user
+    // 1. Check and seed Templates
     const { data: existingTemplates } = await supabase
-      .from('templates')
-      .select('id')
-      .limit(1)
+      .from("templates")
+      .select("id")
+      .limit(1);
 
-    if (existingTemplates && existingTemplates.length > 0) {
-      console.log('Data already seeded')
-      return true
+    if (!existingTemplates || existingTemplates.length === 0) {
+      console.log("Seeding initial template for user...");
+      await supabase.from("templates").insert({
+        name: "Standard Offer",
+        content:
+          "Dear {{name}},<br><br>We are pleased to offer you the position of {{role}} at our company.<br><br>Start Date: {{offerDate}}<br><br>Sincerely, HR",
+        user_id: user.id,
+      });
+    } else {
+      console.log("Templates already exist, skipping template seed");
     }
 
-    console.log('Seeding initial data for new user...')
+    // 2. Check and seed Company Settings
+    const { data: existingSettings } = await supabase
+      .from("company_settings")
+      .select("id")
+      .eq("user_id", user.id)
+      .limit(1);
 
-    // Seed template
-    await supabase.from('templates').insert({
-      name: 'Standard Offer',
-      content: 'Dear {{name}},<br><br>We are pleased to offer you the position of {{role}} at our company.<br><br>Start Date: {{offerDate}}<br><br>Sincerely, HR',
-      user_id: user.id,
-    })
+    if (!existingSettings || existingSettings.length === 0) {
+      console.log("Seeding initial company settings for user...");
+      await supabase.from("company_settings").insert({
+        company_name: "",
+        company_address: "",
+        company_website: "",
+        company_phone: "",
+        logo_url: "",
+        primary_color: "#000000",
+        sender_name: "",
+        sender_email: "",
+        user_id: user.id,
+      });
+    } else {
+      console.log("Company settings already exist, skipping settings seed");
+    }
 
-    // Seed company settings
-    await supabase.from('company_settings').insert({
-      company_name: '',
-      company_address: '',
-      company_website: '',
-      company_phone: '',
-      logo_url: '',
-      primary_color: '#000000',
-      sender_name: '',
-      sender_email: '',
-      user_id: user.id,
-    })
-
-    console.log('Initial data seeded successfully')
-    return true
+    console.log("Initial data check completed");
+    return true;
   } catch (err) {
-    console.error('Error seeding data:', err)
-    return false
+    console.error("Error seeding data:", err);
+    return false;
   }
 }
