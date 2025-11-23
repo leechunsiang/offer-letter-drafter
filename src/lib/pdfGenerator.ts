@@ -37,7 +37,10 @@ export const generateOfferPDF = async (
   container.style.padding = '20mm'; // Margins
   container.style.backgroundColor = '#ffffff';
   container.style.color = '#000000';
+  container.style.backgroundColor = '#ffffff';
+  container.style.color = '#000000';
   container.style.fontFamily = 'serif'; // Match the preview font
+  container.style.boxSizing = 'border-box'; // Ensure padding is included in width/height
   
   // Add specific classes to match the preview styling if needed
   // We can also inline some styles to be safe
@@ -108,7 +111,8 @@ export const generateOfferPDF = async (
     heightLeft -= pageHeight;
 
     // Add subsequent pages if content overflows
-    while (heightLeft > 0) {
+    // Use a small epsilon (1mm) to avoid blank pages due to rounding errors
+    while (heightLeft > 1) {
       position = heightLeft - imgHeight;
       pdf.addPage();
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
