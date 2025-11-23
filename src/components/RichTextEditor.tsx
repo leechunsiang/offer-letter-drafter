@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { Bold, Italic, Underline, Type, Palette } from 'lucide-react'
+import { Bold, Italic, Underline, Type, Palette, AlignJustify, List } from 'lucide-react'
 import { Button } from './ui/button'
 
 interface RichTextEditorProps {
@@ -183,6 +183,27 @@ export default function RichTextEditor({
           >
             Right
           </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => execCommand('justifyFull')}
+            title="Justify Full"
+            className="h-8 w-8 p-0"
+          >
+            <AlignJustify className="h-4 w-4" />
+          </Button>
+          <div className="w-px h-8 bg-border mx-1" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => execCommand('insertUnorderedList')}
+            title="Bullet List"
+            className="h-8 w-8 p-0"
+          >
+            <List className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Variables Toolbar */}
@@ -239,6 +260,18 @@ export default function RichTextEditor({
 
         .rich-text-editor .prose u {
           text-decoration: underline;
+        }
+
+        .rich-text-editor .prose ul {
+          list-style-type: disc;
+          padding-left: 1.5em;
+          margin-top: 0.5em;
+          margin-bottom: 0.5em;
+        }
+
+        .rich-text-editor .prose li {
+          margin-top: 0.25em;
+          margin-bottom: 0.25em;
         }
       `}} />
     </div>

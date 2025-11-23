@@ -43,7 +43,20 @@ export const generateOfferPDF = async (
   // We can also inline some styles to be safe
   
   // Construct the HTML structure
-  let htmlStructure = '';
+  let htmlStructure = `
+    <style>
+      ul {
+        list-style-type: disc;
+        padding-left: 1.5em;
+        margin-top: 0.5em;
+        margin-bottom: 0.5em;
+      }
+      li {
+        margin-top: 0.25em;
+        margin-bottom: 0.25em;
+      }
+    </style>
+  `;
   
   // Add logo if exists
   if (companySettings.branding.logoUrl) {
