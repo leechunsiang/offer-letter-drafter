@@ -94,7 +94,7 @@ export const teamsService = {
     }))
   },
 
-  async addMember(teamId: string, email: string, role: 'admin' | 'member' = 'member'): Promise<void> {
+  async addMember(_teamId: string, _email: string, _role: 'admin' | 'member' = 'member'): Promise<void> {
     // For now, we'll need the user to provide the user_id directly
     // In a real app, you'd use a server-side function to look up by email
     throw new Error('Adding members by email is not yet supported. Please use user ID.')

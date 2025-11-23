@@ -10,6 +10,7 @@ export interface Template {
     id: string;
     name: string;
     content: string;
+    isDefault: boolean;
 }
 export interface CompanySettings {
     info: {
@@ -41,7 +42,9 @@ interface Store {
     addCandidate: (candidate: Omit<Candidate, 'id' | 'status'>) => Promise<void>;
     updateCandidateStatus: (id: string, status: 'Pending' | 'Generated') => Promise<void>;
     addTemplate: (template: Omit<Template, 'id'>) => Promise<void>;
-    updateTemplate: (id: string, content: string) => Promise<void>;
+    updateTemplate: (id: string, updates: Partial<Template>) => Promise<void>;
+    deleteTemplate: (id: string) => Promise<void>;
+    deleteCandidate: (id: string) => Promise<void>;
     updateCompanySettings: (settings: Partial<CompanySettings>) => Promise<void>;
 }
 export declare const useStore: import("zustand").UseBoundStore<import("zustand").StoreApi<Store>>;

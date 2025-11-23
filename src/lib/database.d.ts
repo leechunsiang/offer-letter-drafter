@@ -13,6 +13,7 @@ export interface DbTemplate {
     id: string;
     name: string;
     content: string;
+    is_default: boolean;
     created_at: string;
     updated_at: string;
 }
@@ -39,7 +40,7 @@ export declare const candidatesService: {
 export declare const templatesService: {
     getAll(): Promise<Template[]>;
     create(template: Omit<Template, "id">): Promise<Template>;
-    update(id: string, content: string): Promise<Template>;
+    update(id: string, updates: Partial<Template>): Promise<Template>;
     delete(id: string): Promise<void>;
     subscribe(callback: () => void): () => void;
 };

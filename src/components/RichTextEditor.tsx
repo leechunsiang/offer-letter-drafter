@@ -1,6 +1,7 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { Bold, Italic, Underline, Type, Palette, AlignJustify, List } from 'lucide-react'
 import { Button } from './ui/button'
+import ColorPicker from './ColorPicker'
 
 interface RichTextEditorProps {
   value: string
@@ -16,6 +17,8 @@ export default function RichTextEditor({
   className = ''
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null)
+  const selectionRange = useRef<Range | null>(null)
+  const [showColorPicker, setShowColorPicker] = useState(false)
 
   // Initialize editor content
   useEffect(() => {
@@ -76,11 +79,25 @@ export default function RichTextEditor({
     }
   }
 
-  const handleColor = () => {
-    const color = prompt('Enter color (e.g., #ff0000, red, rgb(255,0,0)):', '#000000')
-    if (color) {
-      execCommand('foreColor', color)
+  const saveSelection = () => {
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      selectionRange.current = selection.getRangeAt(0)
     }
+  }
+
+  const restoreSelection = () => {
+    const selection = window.getSelection()
+    if (selection && selectionRange.current) {
+      selection.removeAllRanges()
+      selection.addRange(selectionRange.current)
+    }
+  }
+
+  const handleColorSelect = (color: string) => {
+    restoreSelection()
+    execCommand('foreColor', color)
+    setShowColorPicker(false)
   }
 
   const variables = [
@@ -142,16 +159,29 @@ export default function RichTextEditor({
           >
             <Type className="h-4 w-4" />
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleColor}
-            title="Text Color"
-            className="h-8 w-8 p-0"
-          >
-            <Palette className="h-4 w-4" />
-          </Button>
+          <div className="relative">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (!showColorPicker) {
+                  saveSelection()
+                }
+                setShowColorPicker(!showColorPicker)
+              }}
+              title="Text Color"
+              className={`h-8 w-8 p-0 ${showColorPicker ? 'bg-muted' : ''}`}
+            >
+              <Palette className="h-4 w-4" />
+            </Button>
+            {showColorPicker && (
+              <ColorPicker
+                onSelect={handleColorSelect}
+                onClose={() => setShowColorPicker(false)}
+              />
+            )}
+          </div>
           <div className="w-px h-8 bg-border mx-1" />
           <Button
             type="button"
