@@ -105,20 +105,39 @@ export function Layout() {
         </div>
         <nav className="flex flex-1 flex-col gap-2 p-4">
           <div className="flex-1 space-y-2">
-            {sidebarItems.map((item) => (
-              <Link
-                key={item.href}
-                to={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                  location.pathname === item.href &&
-                    "bg-muted text-primary font-medium"
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.title}
-              </Link>
-            ))}
+            {sidebarItems.map((item) => {
+              const isAdminPage = item.href === "/admin"
+              const hasAdminAccess = currentTeam?.role === 'owner' || currentTeam?.role === 'admin'
+              const isDisabled = isAdminPage && !hasAdminAccess
+              
+              if (isDisabled) {
+                return (
+                  <div
+                    key={item.href}
+                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground/40 cursor-not-allowed"
+                    title="Admin access only"
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.title}
+                  </div>
+                )
+              }
+              
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+                    location.pathname === item.href &&
+                      "bg-muted text-primary font-medium"
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.title}
+                </Link>
+              )
+            })}
             
             <Link
               to="/invitations"

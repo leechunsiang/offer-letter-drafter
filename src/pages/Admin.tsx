@@ -13,14 +13,32 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useTeam } from "@/contexts/TeamContext"
 
 export default function Admin() {
+  const { currentTeam } = useTeam()
   const { candidates, templates, updateCandidateStatus, updateCandidateContent, companySettings } = useStore()
   const [previewOpen, setPreviewOpen] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [feedback, setFeedback] = useState("")
   const [candidateToReject, setCandidateToReject] = useState<Candidate | null>(null)
+
+  // Check if user has admin access
+  const hasAdminAccess = currentTeam?.role === 'owner' || currentTeam?.role === 'admin'
+
+  if (!hasAdminAccess) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <h2 className="text-2xl font-bold">Access Denied</h2>
+          <p className="text-muted-foreground">
+            You need owner or admin permissions to access this page.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   const submittedCandidates = candidates.filter(c => c.status === 'Submitted')
 
