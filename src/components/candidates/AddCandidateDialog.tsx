@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useStore } from "@/store/useStore"
+import { useTeam } from "@/contexts/TeamContext"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -20,6 +21,7 @@ interface AddCandidateDialogProps {
 
 export function AddCandidateDialog({ open, onOpenChange, onSuccess }: AddCandidateDialogProps) {
   const { addCandidate } = useStore()
+  const { currentTeam } = useTeam()
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -29,8 +31,13 @@ export function AddCandidateDialog({ open, onOpenChange, onSuccess }: AddCandida
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!currentTeam) {
+      console.error('No team selected')
+      return
+    }
+
     try {
-      await addCandidate(formData)
+      await addCandidate(formData, currentTeam.id)
       setFormData({
         name: "",
         email: "",

@@ -6,10 +6,12 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Save, Upload } from "lucide-react"
 import { useToast } from "@/contexts/ToastContext"
+import { useTeam } from "@/contexts/TeamContext"
 
 export default function Settings() {
   const { companySettings, updateCompanySettings } = useStore()
   const { showToast } = useToast()
+  const { currentTeam } = useTeam()
   const [formData, setFormData] = useState(companySettings)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -56,9 +58,14 @@ export default function Settings() {
 
 
   const handleSave = async () => {
+    if (!currentTeam) {
+      showToast("No team selected", "error")
+      return
+    }
+
     setIsSaving(true)
     try {
-      await updateCompanySettings(formData)
+      await updateCompanySettings(formData, currentTeam.id)
       showToast('Settings saved successfully!', 'success')
     } catch (error) {
       console.error('Failed to save settings:', error)

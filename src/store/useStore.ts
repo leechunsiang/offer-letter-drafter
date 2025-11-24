@@ -44,16 +44,16 @@ interface Store {
   initialized: boolean
 
   initialize: () => Promise<void>
-  loadCandidates: () => Promise<void>
-  loadTemplates: () => Promise<void>
-  loadCompanySettings: () => Promise<void>
-  addCandidate: (candidate: Omit<Candidate, 'id' | 'status'>) => Promise<void>
+  loadCandidates: (teamId?: string) => Promise<void>
+  loadTemplates: (teamId?: string) => Promise<void>
+  loadCompanySettings: (teamId?: string) => Promise<void>
+  addCandidate: (candidate: Omit<Candidate, 'id' | 'status'>, teamId: string) => Promise<void>
   updateCandidateStatus: (id: string, status: 'Pending' | 'Generated') => Promise<void>
-  addTemplate: (template: Omit<Template, 'id'>) => Promise<void>
-  updateTemplate: (id: string, updates: Partial<Template>) => Promise<void>
+  addTemplate: (template: Omit<Template, 'id'>, teamId: string) => Promise<void>
+  updateTemplate: (id: string, updates: Partial<Template>, teamId?: string) => Promise<void>
   deleteTemplate: (id: string) => Promise<void>
   deleteCandidate: (id: string) => Promise<void>
-  updateCompanySettings: (settings: Partial<CompanySettings>) => Promise<void>
+  updateCompanySettings: (settings: Partial<CompanySettings>, teamId: string) => Promise<void>
 }
 
 const defaultCompanySettings: CompanySettings = {
@@ -126,9 +126,9 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
 
-  loadCandidates: async () => {
+  loadCandidates: async (teamId) => {
     try {
-      const candidates = await candidatesService.getAll()
+      const candidates = await candidatesService.getAll(teamId)
       set({ candidates, error: null })
     } catch (error) {
       console.error('Error loading candidates:', error)
@@ -136,9 +136,9 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
 
-  loadTemplates: async () => {
+  loadTemplates: async (teamId) => {
     try {
-      const templates = await templatesService.getAll()
+      const templates = await templatesService.getAll(teamId)
       set({ templates, error: null })
     } catch (error) {
       console.error('Error loading templates:', error)
@@ -146,9 +146,9 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
 
-  loadCompanySettings: async () => {
+  loadCompanySettings: async (teamId) => {
     try {
-      const settings = await companySettingsService.get()
+      const settings = await companySettingsService.get(teamId)
       if (settings) {
         set({ companySettings: settings, error: null })
       }
@@ -158,9 +158,9 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
 
-  addCandidate: async (candidate) => {
+  addCandidate: async (candidate, teamId) => {
     try {
-      const newCandidate = await candidatesService.create(candidate)
+      const newCandidate = await candidatesService.create(candidate, teamId)
       set((state) => ({
         candidates: [newCandidate, ...state.candidates],
         error: null,
@@ -188,9 +188,9 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
 
-  addTemplate: async (template) => {
+  addTemplate: async (template, teamId) => {
     try {
-      const newTemplate = await templatesService.create(template)
+      const newTemplate = await templatesService.create(template, teamId)
       set((state) => ({
         templates: [newTemplate, ...state.templates],
         error: null,
@@ -202,9 +202,9 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
 
-  updateTemplate: async (id, updates) => {
+  updateTemplate: async (id, updates, teamId) => {
     try {
-      const updatedTemplate = await templatesService.update(id, updates)
+      const updatedTemplate = await templatesService.update(id, updates, teamId)
       set((state) => ({
         templates: state.templates.map((t) =>
           t.id === id ? updatedTemplate : t
@@ -246,7 +246,7 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
 
-  updateCompanySettings: async (settings) => {
+  updateCompanySettings: async (settings, teamId) => {
     try {
       const currentSettings = get().companySettings
       const mergedSettings = {
@@ -254,7 +254,7 @@ export const useStore = create<Store>((set, get) => ({
         branding: { ...currentSettings.branding, ...settings.branding },
         emailConfig: { ...currentSettings.emailConfig, ...settings.emailConfig },
       }
-      const updated = await companySettingsService.upsert(mergedSettings)
+      const updated = await companySettingsService.upsert(mergedSettings, teamId)
       set({ companySettings: updated, error: null })
     } catch (error) {
       console.error('Error updating company settings:', error)

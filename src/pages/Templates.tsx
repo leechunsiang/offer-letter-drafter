@@ -8,10 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Save, Trash2, Star } from "lucide-react"
 
 import { useToast } from "@/contexts/ToastContext"
+import { useTeam } from "@/contexts/TeamContext"
 
 export default function Templates() {
   const { templates, addTemplate, updateTemplate, deleteTemplate } = useStore()
   const { showToast } = useToast()
+  const { currentTeam } = useTeam()
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<{ name: string; content: string }>({
     name: "",
@@ -64,18 +66,23 @@ export default function Templates() {
     
     setIsSaving(true)
     try {
+      if (!currentTeam) {
+        showToast("No team selected", "error")
+        return
+      }
+
       if (selectedTemplateId && selectedTemplateId !== 'new') {
         await updateTemplate(selectedTemplateId, {
           name: editForm.name,
           content: editForm.content
-        })
+        }, currentTeam.id)
         showToast('Template updated successfully!', 'success')
       } else {
         await addTemplate({ 
           name: editForm.name, 
           content: editForm.content,
           isDefault: false
-        })
+        }, currentTeam.id)
         // After creating, we can either stay on the new one (if we get ID back) or reset
         // For now, let's reset to "New" state to allow adding another, or maybe select the new one?
         // The store updates `templates`, so the useEffect might pick it up if we set to null.

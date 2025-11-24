@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard"
 import Candidates from "@/pages/Candidates"
 import Templates from "@/pages/Templates"
 import Settings from "@/pages/Settings"
+import Teams from "@/pages/Teams"
 import TeamOnboarding from "@/pages/TeamOnboarding"
 import Login from "@/pages/Login"
 import Signup from "@/pages/Signup"
@@ -43,6 +44,7 @@ function AppContent() {
         <Route index element={<Dashboard />} />
         <Route path="candidates" element={<Candidates />} />
         <Route path="templates" element={<Templates />} />
+        <Route path="teams" element={<Teams />} />
         <Route path="settings" element={<Settings />} />
       </Route>
       

@@ -1,8 +1,10 @@
+import { useEffect } from "react"
 import { Link, Outlet, useLocation } from "react-router-dom"
 import { LayoutDashboard, Users, FileText, Settings, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useStore } from "@/store/useStore"
 import { useAuth } from "@/contexts/AuthContext"
+import { useTeam } from "@/contexts/TeamContext"
 import { LoadingPage } from "./LoadingSpinner"
 import { Button } from "./ui/button"
 
@@ -23,6 +25,11 @@ const sidebarItems = [
     icon: FileText,
   },
   {
+    title: "Teams",
+    href: "/teams",
+    icon: Users,
+  },
+  {
     title: "Settings",
     href: "/settings",
     icon: Settings,
@@ -31,8 +38,17 @@ const sidebarItems = [
 
 export function Layout() {
   const location = useLocation()
-  const { isLoading, initialized, error } = useStore()
+  const { isLoading, initialized, error, loadCandidates, loadTemplates, loadCompanySettings } = useStore()
   const { user, signOut } = useAuth()
+  const { currentTeam } = useTeam()
+
+  useEffect(() => {
+    if (currentTeam) {
+      loadCandidates(currentTeam.id)
+      loadTemplates(currentTeam.id)
+      loadCompanySettings(currentTeam.id)
+    }
+  }, [currentTeam, loadCandidates, loadTemplates, loadCompanySettings])
 
   if (!initialized && isLoading) {
     return <LoadingPage />

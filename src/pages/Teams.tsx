@@ -4,14 +4,14 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { teamsService, Team, TeamMember } from '@/lib/teams'
+import { teamsService, TeamWithRole, TeamMember } from '@/lib/teams'
 import { InviteMemberDialog } from '@/components/teams/InviteMemberDialog'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function Teams() {
   const { user } = useAuth()
-  const [teams, setTeams] = useState<Team[]>([])
-  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
+  const [teams, setTeams] = useState<TeamWithRole[]>([])
+  const [selectedTeam, setSelectedTeam] = useState<TeamWithRole | null>(null)
   const [members, setMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -58,8 +58,10 @@ export default function Teams() {
     setCreating(true)
     try {
       const team = await teamsService.create(newTeamName)
-      setTeams([team, ...teams])
-      setSelectedTeam(team)
+      // Optimistically add the new team with owner role
+      const newTeam: TeamWithRole = { ...team, role: 'owner' }
+      setTeams([newTeam, ...teams])
+      setSelectedTeam(newTeam)
       setNewTeamName('')
     } catch (error) {
       console.error('Error creating team:', error)
@@ -71,8 +73,16 @@ export default function Teams() {
 
   const handleInviteMember = async (email: string, role: 'admin' | 'member') => {
     if (!selectedTeam) return
-    await teamsService.addMember(selectedTeam.id, email, role)
-    await loadMembers(selectedTeam.id)
+    try {
+      // Map UI role 'member' to backend role 'user'
+      const backendRole = role === 'member' ? 'user' : role
+      await teamsService.inviteUserByEmail(selectedTeam.id, email, backendRole)
+      alert('Invitation sent successfully!')
+      // We don't reload members here as the user isn't a member yet, just invited
+    } catch (error) {
+      console.error('Error inviting member:', error)
+      alert('Failed to invite member')
+    }
   }
 
   const handleRemoveMember = async (userId: string) => {
