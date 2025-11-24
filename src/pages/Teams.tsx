@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { teamsService, TeamWithRole, TeamMember } from '@/lib/teams'
+import { teamsService, TeamWithRole, TeamMember, TeamInvitation } from '@/lib/teams'
 import { InviteMemberDialog } from '@/components/teams/InviteMemberDialog'
+import { InvitationList } from '@/components/teams/InvitationList'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function Teams() {
@@ -13,6 +14,7 @@ export default function Teams() {
   const [teams, setTeams] = useState<TeamWithRole[]>([])
   const [selectedTeam, setSelectedTeam] = useState<TeamWithRole | null>(null)
   const [members, setMembers] = useState<TeamMember[]>([])
+  const [invitations, setInvitations] = useState<TeamInvitation[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [newTeamName, setNewTeamName] = useState('')
@@ -25,6 +27,7 @@ export default function Teams() {
   useEffect(() => {
     if (selectedTeam) {
       loadMembers(selectedTeam.id)
+      loadInvitations(selectedTeam.id)
     }
   }, [selectedTeam])
 
@@ -48,6 +51,15 @@ export default function Teams() {
       setMembers(data)
     } catch (error) {
       console.error('Error loading members:', error)
+    }
+  }
+
+  const loadInvitations = async (teamId: string) => {
+    try {
+      const data = await teamsService.getPendingInvitationsForTeam(teamId)
+      setInvitations(data)
+    } catch (error) {
+      console.error('Error loading invitations:', error)
     }
   }
 
@@ -78,6 +90,7 @@ export default function Teams() {
       const backendRole = role === 'member' ? 'user' : role
       await teamsService.inviteUserByEmail(selectedTeam.id, email, backendRole)
       alert('Invitation sent successfully!')
+      loadInvitations(selectedTeam.id)
       // We don't reload members here as the user isn't a member yet, just invited
     } catch (error) {
       console.error('Error inviting member:', error)
@@ -110,6 +123,17 @@ export default function Teams() {
     } catch (error) {
       console.error('Error deleting team:', error)
       alert('Failed to delete team')
+    }
+  }
+
+  const handleRevokeInvitation = async (invitationId: string) => {
+    if (!selectedTeam) return
+    try {
+      await teamsService.revokeInvitation(invitationId)
+      await loadInvitations(selectedTeam.id)
+    } catch (error) {
+      console.error('Error revoking invitation:', error)
+      alert('Failed to revoke invitation')
     }
   }
 
@@ -245,6 +269,16 @@ export default function Teams() {
                     ))}
                   </div>
                 </div>
+
+                {isOwner && (
+                  <div>
+                    <h3 className="font-semibold mb-3">Pending Invitations</h3>
+                    <InvitationList 
+                      invitations={invitations} 
+                      onRevoke={handleRevokeInvitation} 
+                    />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

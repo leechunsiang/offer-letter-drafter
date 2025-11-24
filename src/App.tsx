@@ -11,6 +11,7 @@ import Templates from "@/pages/Templates"
 import Settings from "@/pages/Settings"
 import Teams from "@/pages/Teams"
 import TeamOnboarding from "@/pages/TeamOnboarding"
+import Invitations from "@/pages/Invitations"
 import Login from "@/pages/Login"
 import Signup from "@/pages/Signup"
 import ForgotPassword from "@/pages/ForgotPassword"
@@ -45,6 +46,7 @@ function AppContent() {
         <Route path="candidates" element={<Candidates />} />
         <Route path="templates" element={<Templates />} />
         <Route path="teams" element={<Teams />} />
+        <Route path="invitations" element={<Invitations />} />
         <Route path="settings" element={<Settings />} />
       </Route>
       

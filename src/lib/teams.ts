@@ -356,4 +356,12 @@ export const teamsService = {
     if (error) throw error
     return (data || []) as TeamInvitation[]
   },
+  async revokeInvitation(invitationId: string): Promise<void> {
+    const { error } = await supabase
+      .from('team_invitations')
+      .delete()
+      .eq('id', invitationId)
+
+    if (error) throw error
+  },
 }
