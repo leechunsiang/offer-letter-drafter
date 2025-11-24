@@ -75,6 +75,21 @@ export default function Settings() {
     }
   }
 
+  const hasAdminAccess = currentTeam?.role === 'owner' || currentTeam?.role === 'admin'
+
+  if (!hasAdminAccess) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <h2 className="text-2xl font-bold">Access Denied</h2>
+          <p className="text-muted-foreground">
+            You need owner or admin permissions to access this page.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-10">
       <div className="flex items-center justify-between">

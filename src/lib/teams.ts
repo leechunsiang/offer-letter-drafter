@@ -141,14 +141,32 @@ export const teamsService = {
   async getMembers(teamId: string): Promise<TeamMember[]> {
     const { data, error } = await supabase
       .from('team_members')
-     .select('id, team_id, user_id, role, joined_at')
+      .select('id, team_id, user_id, role, joined_at')
       .eq('team_id', teamId)
       .order('joined_at', { ascending: true })
 
     if (error) throw error
     
-    // For now, just return basic data
-    return (data || []) as TeamMember[]
+    if (!data || data.length === 0) return []
+
+    // Fetch user emails from auth.users
+    const userIds = data.map(m => m.user_id)
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, email')
+      .in('id', userIds)
+
+    if (usersError) {
+      console.error('Error fetching user emails:', usersError)
+      // Return members without emails if query fails
+      return data as TeamMember[]
+    }
+
+    // Map emails to members
+    return data.map(member => ({
+      ...member,
+      user_email: users?.find(u => u.id === member.user_id)?.email || undefined
+    })) as TeamMember[]
   },
 
   async removeMember(teamId: string, userId: string): Promise<void> {
@@ -161,7 +179,7 @@ export const teamsService = {
     if (error) throw error
   },
 
-  async updateMemberRole(teamId: string, userId: string, role: 'admin' | 'user'): Promise<void> {
+  async updateMemberRole(teamId: string, userId: string, role: 'owner' | 'admin' | 'user'): Promise<void> {
     const { error } = await supabase
       .from('team_members')
       .update({ role })

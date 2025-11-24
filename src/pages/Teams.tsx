@@ -4,13 +4,16 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { teamsService, TeamWithRole, TeamMember, TeamInvitation } from '@/lib/teams'
 import { InviteMemberDialog } from '@/components/teams/InviteMemberDialog'
 import { InvitationList } from '@/components/teams/InvitationList'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTeam } from '@/contexts/TeamContext'
 
 export default function Teams() {
   const { user } = useAuth()
+  const { currentTeam } = useTeam()
   const [teams, setTeams] = useState<TeamWithRole[]>([])
   const [selectedTeam, setSelectedTeam] = useState<TeamWithRole | null>(null)
   const [members, setMembers] = useState<TeamMember[]>([])
@@ -19,6 +22,9 @@ export default function Teams() {
   const [creating, setCreating] = useState(false)
   const [newTeamName, setNewTeamName] = useState('')
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
+
+  // Check if user has admin access (will be checked after loading)
+  const hasAdminAccess = currentTeam?.role === 'owner' || currentTeam?.role === 'admin'
 
   useEffect(() => {
     loadTeams()
@@ -139,12 +145,36 @@ export default function Teams() {
 
   const isOwner = selectedTeam?.owner_id === user?.id
 
+  const handleRoleChange = async (member: TeamMember, newRole: 'owner' | 'admin' | 'user') => {
+    if (!selectedTeam) return
+    try {
+      await teamsService.updateMemberRole(selectedTeam.id, member.user_id, newRole)
+      await loadMembers(selectedTeam.id)
+    } catch (error) {
+      console.error('Error updating member role:', error)
+      alert('Failed to update member role')
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading teams...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!hasAdminAccess) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <h2 className="text-2xl font-bold">Access Denied</h2>
+          <p className="text-muted-foreground">
+            You need owner or admin permissions to access this page.
+          </p>
         </div>
       </div>
     )
@@ -252,19 +282,36 @@ export default function Teams() {
                           {member.role === 'owner' && <Crown className="h-4 w-4 text-yellow-500" />}
                           {member.role === 'admin' && <Shield className="h-4 w-4 text-blue-500" />}
                           <div>
-                            <p className="font-medium">{member.user_email}</p>
+                            <p className="font-medium">{member.user_email || 'Unknown Email'}</p>
                             <p className="text-xs text-muted-foreground capitalize">{member.role}</p>
                           </div>
                         </div>
-                        {isOwner && member.role !== 'owner' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveMember(member.user_id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {isOwner && member.role !== 'owner' && (
+                            <>
+                              <Select
+                                value={member.role}
+                                onValueChange={(value) => handleRoleChange(member, value as 'owner' | 'admin' | 'user')}
+                              >
+                                <SelectTrigger className="w-32">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="user">Member</SelectItem>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="owner">Owner</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveMember(member.user_id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
