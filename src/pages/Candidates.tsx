@@ -6,12 +6,21 @@ import { cn } from "@/lib/utils"
 import { generateOfferPDF } from "@/lib/pdfGenerator"
 import { PreviewDialog } from "@/components/candidates/PreviewDialog"
 import { AddCandidateDialog } from "@/components/candidates/AddCandidateDialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export default function Candidates() {
   const { candidates, templates, updateCandidateStatus, updateCandidateContent, deleteCandidate, companySettings } = useStore()
   const [isOpen, setIsOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false)
+  const [selectedFeedback, setSelectedFeedback] = useState<string>("")
   
   // Manage mode state
   const [isManageMode, setIsManageMode] = useState(false)
@@ -97,6 +106,13 @@ export default function Candidates() {
         console.error('Failed to delete candidates:', error)
       }
     }
+  }
+
+  const handleViewFeedback = (feedback: string) => {
+    console.log('handleViewFeedback called with:', feedback)
+    setSelectedFeedback(feedback)
+    setFeedbackDialogOpen(true)
+    console.log('Dialog should now be open')
   }
 
   const getStatusColor = (status: Candidate['status']) => {
@@ -213,7 +229,14 @@ export default function Candidates() {
                         {candidate.status}
                       </div>
                       {candidate.status === 'Rejected' && candidate.feedback && (
-                        <div className="text-xs text-red-500 max-w-[200px] truncate" title={candidate.feedback}>
+                        <div 
+                          className="text-xs text-red-500 max-w-[200px] truncate cursor-pointer hover:underline" 
+                          title="Click to view full feedback"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleViewFeedback(candidate.feedback!)
+                          }}
+                        >
                           Reason: {candidate.feedback}
                         </div>
                       )}
@@ -289,6 +312,20 @@ export default function Candidates() {
         onGenerate={() => handleGenerate()}
         onSave={handleSaveContent}
       />
+
+      <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rejection Feedback</DialogTitle>
+            <DialogDescription>
+              Full feedback provided for the rejected candidate.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 p-4 bg-muted rounded-md">
+            <p className="text-sm whitespace-pre-wrap">{selectedFeedback}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
