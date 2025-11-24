@@ -7,6 +7,10 @@ export const generateOfferContent = (
   template: Template, 
   companySettings: CompanySettings
 ) => {
+  if (candidate.customContent) {
+    return candidate.customContent;
+  }
+  
   return template.content
     .replace(/{{name}}/g, candidate.name)
     .replace(/{{role}}/g, candidate.role)

@@ -7,8 +7,10 @@ export interface Candidate {
   name: string
   email: string
   role: string
-  status: 'Pending' | 'Generated'
+  status: 'Pending' | 'Generated' | 'Submitted' | 'Approved' | 'Rejected'
   offerDate: string
+  customContent?: string
+  feedback?: string
 }
 
 export interface Template {
@@ -48,7 +50,8 @@ interface Store {
   loadTemplates: (teamId?: string) => Promise<void>
   loadCompanySettings: (teamId?: string) => Promise<void>
   addCandidate: (candidate: Omit<Candidate, 'id' | 'status'>, teamId: string) => Promise<void>
-  updateCandidateStatus: (id: string, status: 'Pending' | 'Generated') => Promise<void>
+  updateCandidateStatus: (id: string, status: Candidate['status'], feedback?: string) => Promise<void>
+  updateCandidateContent: (id: string, content: string) => Promise<void>
   addTemplate: (template: Omit<Template, 'id'>, teamId: string) => Promise<void>
   updateTemplate: (id: string, updates: Partial<Template>, teamId?: string) => Promise<void>
   deleteTemplate: (id: string) => Promise<void>
@@ -172,9 +175,9 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
 
-  updateCandidateStatus: async (id, status) => {
+  updateCandidateStatus: async (id, status, feedback) => {
     try {
-      const updatedCandidate = await candidatesService.updateStatus(id, status)
+      const updatedCandidate = await candidatesService.updateStatus(id, status, feedback)
       set((state) => ({
         candidates: state.candidates.map((c) =>
           c.id === id ? updatedCandidate : c
@@ -184,6 +187,22 @@ export const useStore = create<Store>((set, get) => ({
     } catch (error) {
       console.error('Error updating candidate status:', error)
       set({ error: error instanceof Error ? error.message : 'Failed to update candidate' })
+      throw error
+    }
+  },
+
+  updateCandidateContent: async (id, content) => {
+    try {
+      const updatedCandidate = await candidatesService.updateContent(id, content)
+      set((state) => ({
+        candidates: state.candidates.map((c) =>
+          c.id === id ? updatedCandidate : c
+        ),
+        error: null,
+      }))
+    } catch (error) {
+      console.error('Error updating candidate content:', error)
+      set({ error: error instanceof Error ? error.message : 'Failed to update candidate content' })
       throw error
     }
   },

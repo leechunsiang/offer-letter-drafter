@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Link, Outlet, useLocation } from "react-router-dom"
-import { LayoutDashboard, Users, FileText, Settings, LogOut, Mail } from "lucide-react"
+import { LayoutDashboard, Users, FileText, Settings, LogOut, Mail, Shield } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useStore } from "@/store/useStore"
 import { teamsService } from "@/lib/teams"
@@ -35,6 +35,11 @@ const sidebarItems = [
     title: "Settings",
     href: "/settings",
     icon: Settings,
+  },
+  {
+    title: "Admin",
+    href: "/admin",
+    icon: Shield,
   },
 ]
 

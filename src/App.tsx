@@ -12,6 +12,7 @@ import Settings from "@/pages/Settings"
 import Teams from "@/pages/Teams"
 import TeamOnboarding from "@/pages/TeamOnboarding"
 import Invitations from "@/pages/Invitations"
+import Admin from "@/pages/Admin"
 import Login from "@/pages/Login"
 import Signup from "@/pages/Signup"
 import ForgotPassword from "@/pages/ForgotPassword"
@@ -48,6 +49,7 @@ function AppContent() {
         <Route path="teams" element={<Teams />} />
         <Route path="invitations" element={<Invitations />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="admin" element={<Admin />} />
       </Route>
       
       <Route path="*" element={<Navigate to="/" replace />} />

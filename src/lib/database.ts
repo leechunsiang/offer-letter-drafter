@@ -6,8 +6,10 @@ export interface DbCandidate {
   name: string
   email: string
   role: string
-  status: 'Pending' | 'Generated'
+  status: 'Pending' | 'Generated' | 'Submitted' | 'Approved' | 'Rejected'
   offer_date: string
+  custom_content?: string
+  feedback?: string
   created_at: string
   updated_at: string
 }
@@ -42,6 +44,8 @@ const mapDbCandidateToCandidate = (dbCandidate: DbCandidate): Candidate => ({
   role: dbCandidate.role,
   status: dbCandidate.status,
   offerDate: dbCandidate.offer_date,
+  customContent: dbCandidate.custom_content,
+  feedback: dbCandidate.feedback,
 })
 
 const mapDbTemplateToTemplate = (dbTemplate: DbTemplate): Template => ({
@@ -110,10 +114,27 @@ export const candidatesService = {
     return mapDbCandidateToCandidate(data as DbCandidate)
   },
 
-  async updateStatus(id: string, status: 'Pending' | 'Generated'): Promise<Candidate> {
+  async updateStatus(id: string, status: Candidate['status'], feedback?: string): Promise<Candidate> {
+    const updates: any = { status }
+    if (feedback !== undefined) {
+      updates.feedback = feedback
+    }
+
     const { data, error } = await supabase
       .from('candidates')
-      .update({ status })
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return mapDbCandidateToCandidate(data as DbCandidate)
+  },
+
+  async updateContent(id: string, content: string): Promise<Candidate> {
+    const { data, error } = await supabase
+      .from('candidates')
+      .update({ custom_content: content })
       .eq('id', id)
       .select()
       .single()

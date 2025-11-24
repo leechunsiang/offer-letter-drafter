@@ -8,7 +8,7 @@ import { PreviewDialog } from "@/components/candidates/PreviewDialog"
 import { AddCandidateDialog } from "@/components/candidates/AddCandidateDialog"
 
 export default function Candidates() {
-  const { candidates, templates, updateCandidateStatus, deleteCandidate, companySettings } = useStore()
+  const { candidates, templates, updateCandidateStatus, updateCandidateContent, deleteCandidate, companySettings } = useStore()
   const [isOpen, setIsOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
@@ -44,10 +44,31 @@ export default function Candidates() {
     }
     await generateOfferPDF(targetCandidate, template, companySettings)
     try {
-      await updateCandidateStatus(targetCandidate.id, "Generated")
-      setPreviewOpen(false)
+      if (targetCandidate.status === 'Pending') {
+        await updateCandidateStatus(targetCandidate.id, "Generated")
+      }
+      // Don't close preview automatically if generating from preview dialog
+      // setPreviewOpen(false) 
     } catch (error) {
       console.error('Failed to update candidate status:', error)
+    }
+  }
+
+  const handleSaveContent = async (content: string) => {
+    if (!selectedCandidate) return
+    await updateCandidateContent(selectedCandidate.id, content)
+    // Update local state to reflect changes immediately in preview if needed
+    setSelectedCandidate({ ...selectedCandidate, customContent: content })
+  }
+
+  const handleSubmit = async (candidate: Candidate) => {
+    if (confirm(`Are you sure you want to submit ${candidate.name} for approval?`)) {
+      try {
+        await updateCandidateStatus(candidate.id, "Submitted")
+      } catch (error) {
+        console.error('Failed to submit candidate:', error)
+        alert('Failed to submit candidate')
+      }
     }
   }
 
@@ -75,6 +96,34 @@ export default function Candidates() {
       } catch (error) {
         console.error('Failed to delete candidates:', error)
       }
+    }
+  }
+
+  const getStatusColor = (status: Candidate['status']) => {
+    switch (status) {
+      case 'Generated':
+      case 'Approved':
+        return "border-transparent bg-green-500 text-white hover:bg-green-600"
+      case 'Submitted':
+        return "border-transparent bg-blue-500 text-white hover:bg-blue-600"
+      case 'Rejected':
+        return "border-transparent bg-red-500 text-white hover:bg-red-600"
+      default:
+        return "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80"
+    }
+  }
+
+  const getStatusIcon = (status: Candidate['status']) => {
+    switch (status) {
+      case 'Generated':
+      case 'Approved':
+        return <CheckCircle className="mr-1 h-3 w-3" />
+      case 'Submitted':
+        return <Clock className="mr-1 h-3 w-3" /> // Or a different icon like Send
+      case 'Rejected':
+        return <X className="mr-1 h-3 w-3" />
+      default:
+        return <Clock className="mr-1 h-3 w-3" />
     }
   }
 
@@ -153,26 +202,40 @@ export default function Candidates() {
                   </td>
                   <td className="p-4 align-middle">{candidate.role}</td>
                   <td className="p-4 align-middle">
-                    <div
-                      className={cn(
-                        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                        candidate.status === "Generated"
-                          ? "border-transparent bg-primary text-primary-foreground hover:bg-primary/80"
-                          : "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                    <div className="flex flex-col gap-1 items-start">
+                      <div
+                        className={cn(
+                          "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                          getStatusColor(candidate.status)
+                        )}
+                      >
+                        {getStatusIcon(candidate.status)}
+                        {candidate.status}
+                      </div>
+                      {candidate.status === 'Rejected' && candidate.feedback && (
+                        <div className="text-xs text-red-500 max-w-[200px] truncate" title={candidate.feedback}>
+                          Reason: {candidate.feedback}
+                        </div>
                       )}
-                    >
-                      {candidate.status === "Generated" ? (
-                        <CheckCircle className="mr-1 h-3 w-3" />
-                      ) : (
-                        <Clock className="mr-1 h-3 w-3" />
-                      )}
-                      {candidate.status}
                     </div>
                   </td>
                   <td className="p-4 align-middle">{candidate.offerDate}</td>
                   <td className="p-4 align-middle text-right">
                     {!isManageMode && (
                       <div className="flex items-center justify-end gap-2">
+                        {(candidate.status === 'Pending' || candidate.status === 'Generated' || candidate.status === 'Rejected') && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleSubmit(candidate)
+                            }}
+                          >
+                            Submit
+                          </Button>
+                        )}
                         <Button 
                           variant="outline" 
                           size="sm"
@@ -224,6 +287,7 @@ export default function Candidates() {
         template={getDefaultTemplate()}
         companySettings={companySettings}
         onGenerate={() => handleGenerate()}
+        onSave={handleSaveContent}
       />
     </div>
   )
