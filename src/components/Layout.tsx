@@ -107,10 +107,10 @@ export function Layout() {
           <div className="flex-1 space-y-2">
             {sidebarItems.map((item) => {
               const isAdminPage = item.href === "/admin"
-              const isRestrictedPage = item.href === "/teams" || item.href === "/settings"
+              const isRestrictedPage = item.href === "/settings"
               const hasAdminAccess = currentTeam?.role === 'owner' || currentTeam?.role === 'admin'
               const isDisabled = (isAdminPage || isRestrictedPage) && !hasAdminAccess
-              
+
               if (isDisabled) {
                 return (
                   <div
@@ -123,7 +123,7 @@ export function Layout() {
                   </div>
                 )
               }
-              
+
               return (
                 <Link
                   key={item.href}
@@ -131,7 +131,7 @@ export function Layout() {
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
                     location.pathname === item.href &&
-                      "bg-muted text-primary font-medium"
+                    "bg-muted text-primary font-medium"
                   )}
                 >
                   <item.icon className="h-4 w-4" />
@@ -139,13 +139,13 @@ export function Layout() {
                 </Link>
               )
             })}
-            
+
             <Link
               to="/invitations"
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
                 location.pathname === "/invitations" &&
-                  "bg-muted text-primary font-medium"
+                "bg-muted text-primary font-medium"
               )}
             >
               <Mail className="h-4 w-4" />
@@ -157,7 +157,7 @@ export function Layout() {
               )}
             </Link>
           </div>
-          
+
           {/* User section */}
           <div className="border-t pt-4 space-y-2">
             <div className="px-3 py-2">

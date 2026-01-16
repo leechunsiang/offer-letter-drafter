@@ -4,11 +4,26 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { teamsService, TeamWithRole, TeamMember, TeamInvitation } from '@/lib/teams'
 import { InviteMemberDialog } from '@/components/teams/InviteMemberDialog'
 import { InvitationList } from '@/components/teams/InvitationList'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTeam } from '@/contexts/TeamContext'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 
 export default function Teams() {
   const { user } = useAuth()
@@ -21,6 +36,8 @@ export default function Teams() {
   const [creating, setCreating] = useState(false)
   const [newTeamName, setNewTeamName] = useState('')
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
+  const [claimDialogOpen, setClaimDialogOpen] = useState(false)
+  const [accessKey, setAccessKey] = useState('')
 
   // Check if user has admin access (will be checked after loading)
   const hasAdminAccess = currentTeam?.role === 'owner' || currentTeam?.role === 'admin'
@@ -143,6 +160,8 @@ export default function Teams() {
   }
 
   const isOwner = selectedTeam?.owner_id === user?.id
+  const isAdmin = selectedTeam?.role === 'admin'
+  const isMember = selectedTeam?.role === 'user'
 
   const handleRoleChange = async (member: TeamMember, newRole: 'owner' | 'admin' | 'user') => {
     if (!selectedTeam) return
@@ -158,9 +177,30 @@ export default function Teams() {
       await teamsService.updateMemberRole(selectedTeam.id, member.user_id, newRole)
       console.log('Role updated successfully')
       await loadMembers(selectedTeam.id)
+      // If we made someone else owner, we need to reload teams to update permissions
+      if (newRole === 'owner') {
+        await loadTeams()
+      }
     } catch (error) {
       console.error('Error updating member role:', error)
       alert('Failed to update member role')
+    }
+  }
+
+  const handleClaimOwnership = async () => {
+    if (!selectedTeam || !accessKey.trim()) return
+
+    try {
+      await teamsService.claimOwnership(selectedTeam.id, accessKey)
+      alert('You are now the owner of this team!')
+      setClaimDialogOpen(false)
+      setAccessKey('')
+      // Reload everything to reflect new permissions
+      await loadTeams()
+      await loadMembers(selectedTeam.id)
+    } catch (error) {
+      console.error('Error claiming ownership:', error)
+      alert((error as Error).message || 'Failed to claim ownership')
     }
   }
 
@@ -175,18 +215,6 @@ export default function Teams() {
     )
   }
 
-  if (!hasAdminAccess) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold">Access Denied</h2>
-          <p className="text-muted-foreground">
-            You need owner or admin permissions to access this page.
-          </p>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-6">
@@ -231,11 +259,10 @@ export default function Teams() {
                   <button
                     key={team.id}
                     onClick={() => setSelectedTeam(team)}
-                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                      selectedTeam?.id === team.id
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'hover:bg-muted border-border'
-                    }`}
+                    className={`w-full text-left p-3 rounded-lg border transition-colors ${selectedTeam?.id === team.id
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'hover:bg-muted border-border'
+                      }`}
                   >
                     <div className="flex items-center gap-2">
                       <Users className="h-4 w-4" />
@@ -261,6 +288,12 @@ export default function Teams() {
                   <CardDescription>{members.length} member{members.length !== 1 ? 's' : ''}</CardDescription>
                 </div>
                 <div className="flex gap-2">
+                  {!isOwner && (
+                    <Button variant="outline" onClick={() => setClaimDialogOpen(true)}>
+                      <Crown className="h-4 w-4 mr-2" />
+                      Claim Ownership
+                    </Button>
+                  )}
                   {isOwner && (
                     <>
                       <Button onClick={() => setInviteDialogOpen(true)}>
@@ -297,19 +330,22 @@ export default function Teams() {
                         <div className="flex items-center gap-2">
                           {isOwner && member.role !== 'owner' && (
                             <>
-                              <select
+                              <Select
                                 value={member.role}
-                                onChange={(e) => {
-                                  const newRole = e.target.value as 'owner' | 'admin' | 'user'
-                                  console.log('Native select onChange triggered with value:', newRole)
+                                onValueChange={(value) => {
+                                  const newRole = value as 'owner' | 'admin' | 'user'
                                   handleRoleChange(member, newRole)
                                 }}
-                                className="w-32 h-10 px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                               >
-                                <option value="user">Member</option>
-                                <option value="admin">Admin</option>
-                                <option value="owner">Owner</option>
-                              </select>
+                                <SelectTrigger className="w-32">
+                                  <SelectValue placeholder="Select role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="user">Member</SelectItem>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="owner">Owner</SelectItem>
+                                </SelectContent>
+                              </Select>
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -328,9 +364,9 @@ export default function Teams() {
                 {isOwner && (
                   <div>
                     <h3 className="font-semibold mb-3">Pending Invitations</h3>
-                    <InvitationList 
-                      invitations={invitations} 
-                      onRevoke={handleRevokeInvitation} 
+                    <InvitationList
+                      invitations={invitations}
+                      onRevoke={handleRevokeInvitation}
                     />
                   </div>
                 )}
@@ -354,6 +390,32 @@ export default function Teams() {
         onOpenChange={setInviteDialogOpen}
         onInvite={handleInviteMember}
       />
+
+      <Dialog open={claimDialogOpen} onOpenChange={setClaimDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Claim Team Ownership</DialogTitle>
+            <DialogDescription>
+              Enter your access key to upgrade your role to Owner of {selectedTeam?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="accessKey">Access Key</Label>
+              <Input
+                id="accessKey"
+                placeholder="Enter access key"
+                value={accessKey}
+                onChange={(e) => setAccessKey(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setClaimDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleClaimOwnership} disabled={!accessKey.trim()}>Claim Ownership</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

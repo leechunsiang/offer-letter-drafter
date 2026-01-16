@@ -86,14 +86,14 @@ export const teamsService = {
     // Generate unique invite code
     let inviteCode = generateRandomCode()
     let isUnique = false
-    
+
     while (!isUnique) {
       const { data } = await supabase
         .from('teams')
         .select('id')
         .eq('invite_code', inviteCode)
         .single()
-      
+
       if (!data) {
         isUnique = true
       } else {
@@ -146,7 +146,7 @@ export const teamsService = {
       .order('joined_at', { ascending: true })
 
     if (error) throw error
-    
+
     if (!data || data.length === 0) return []
 
     // Fetch user emails from auth.users
@@ -210,7 +210,7 @@ export const teamsService = {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('User not authenticated')
 
-    const { data, error} = await supabase
+    const { data, error } = await supabase
       .from('team_invitations')
       .insert({
         team_id: teamId,
@@ -227,53 +227,26 @@ export const teamsService = {
   },
 
   async joinTeamByCode(inviteCode: string): Promise<Team> {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('User not authenticated')
+    const { data, error } = await supabase.rpc('join_team_by_invite_code', {
+      input_invite_code: inviteCode
+    })
 
-    // Find team by invite code
-    const { data: team, error: teamError } = await supabase
-      .from('teams')
-      .select('*')
-      .eq('invite_code', inviteCode)
-      .single()
-
-    if (teamError || !team) throw new Error('Invalid invite code')
-
-    // Check if user is already a member
-    const { data: existing } = await supabase
-      .from('team_members')
-      .select('id')
-      .eq('team_id', team.id)
-      .eq('user_id', user.id)
-      .single()
-
-    if (existing) throw new Error('You are already a member of this team')
-
-    // Add user as team member
-    const { error: memberError } = await supabase
-      .from('team_members')
-      .insert({
-        team_id: team.id,
-        user_id: user.id,
-        role: 'user'
-      })
-
-    if (memberError) throw memberError
-    return team as Team
+    if (error) throw error
+    return data as Team
   },
 
   async regenerateInviteCode(teamId: string): Promise<string> {
     // Generate unique invite code
     let inviteCode = generateRandomCode()
     let isUnique = false
-    
+
     while (!isUnique) {
       const { data } = await supabase
         .from('teams')
         .select('id')
         .eq('invite_code', inviteCode)
         .single()
-      
+
       if (!data) {
         isUnique = true
       } else {
@@ -382,4 +355,13 @@ export const teamsService = {
 
     if (error) throw error
   },
+
+  async claimOwnership(teamId: string, accessKey: string): Promise<void> {
+    const { data, error } = await supabase.rpc('claim_team_ownership', {
+      input_team_id: teamId,
+      input_access_key: accessKey
+    })
+
+    if (error) throw error
+  }
 }
