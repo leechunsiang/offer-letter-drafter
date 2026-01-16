@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { teamsService, TeamWithRole, TeamMember, TeamInvitation } from '@/lib/teams'
 import { InviteMemberDialog } from '@/components/teams/InviteMemberDialog'
 import { InvitationList } from '@/components/teams/InvitationList'
@@ -147,8 +146,17 @@ export default function Teams() {
 
   const handleRoleChange = async (member: TeamMember, newRole: 'owner' | 'admin' | 'user') => {
     if (!selectedTeam) return
+
+    console.log('Changing role for member:', member.user_email, 'from', member.role, 'to', newRole)
+
+    if (member.role === newRole) {
+      console.log('Role is already', newRole, '- skipping update')
+      return
+    }
+
     try {
       await teamsService.updateMemberRole(selectedTeam.id, member.user_id, newRole)
+      console.log('Role updated successfully')
       await loadMembers(selectedTeam.id)
     } catch (error) {
       console.error('Error updating member role:', error)
@@ -289,19 +297,19 @@ export default function Teams() {
                         <div className="flex items-center gap-2">
                           {isOwner && member.role !== 'owner' && (
                             <>
-                              <Select
+                              <select
                                 value={member.role}
-                                onValueChange={(value) => handleRoleChange(member, value as 'owner' | 'admin' | 'user')}
+                                onChange={(e) => {
+                                  const newRole = e.target.value as 'owner' | 'admin' | 'user'
+                                  console.log('Native select onChange triggered with value:', newRole)
+                                  handleRoleChange(member, newRole)
+                                }}
+                                className="w-32 h-10 px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                               >
-                                <SelectTrigger className="w-32">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="user">Member</SelectItem>
-                                  <SelectItem value="admin">Admin</SelectItem>
-                                  <SelectItem value="owner">Owner</SelectItem>
-                                </SelectContent>
-                              </Select>
+                                <option value="user">Member</option>
+                                <option value="admin">Admin</option>
+                                <option value="owner">Owner</option>
+                              </select>
                               <Button
                                 variant="ghost"
                                 size="sm"
